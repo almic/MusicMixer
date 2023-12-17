@@ -1,0 +1,23 @@
+{
+  "name": "musicmixer",
+  "version": "1.0.0",
+  "description": "library for mixing sounds and music with the Web Audio API",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/almic/MusicMixer.git"
+  },
+  "keywords": [
+    "music",
+    "mixing"
+  ],
+  "author": "almic",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/almic/MusicMixer/issues"
+  },
+  "homepage": "https://github.com/almic/MusicMixer#readme"
+}
