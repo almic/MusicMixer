@@ -1,5 +1,5 @@
 # MusicMixer.js
 
-Music mixing plugin for RPG Maker MV.
+Music mixing library, designed for general use in JavaScript applications.
 
-I made this for a personal project, but the plugin is so big that I decided to just make a repository for it, for organizational purposes.
+I made this for a personal project in RPGMaker, but the plugin is so big that I decided to just make general purpose and made a repository for it, mostly for organizational purposes.
