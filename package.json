@@ -19,5 +19,8 @@
   "bugs": {
     "url": "https://github.com/almic/MusicMixer/issues"
   },
-  "homepage": "https://github.com/almic/MusicMixer#readme"
+  "homepage": "https://github.com/almic/MusicMixer#readme",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.14.0"
+  }
 }
