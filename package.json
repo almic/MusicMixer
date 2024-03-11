@@ -2,7 +2,7 @@
   "name": "musicmixer",
   "version": "1.0.0",
   "description": "library for mixing sounds and music with the Web Audio API",
-  "main": "main.js",
+  "main": "dist/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -19,8 +19,5 @@
   "bugs": {
     "url": "https://github.com/almic/MusicMixer/issues"
   },
-  "homepage": "https://github.com/almic/MusicMixer#readme",
-  "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.14.0"
-  }
+  "homepage": "https://github.com/almic/MusicMixer#readme"
 }
