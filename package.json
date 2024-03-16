@@ -7,8 +7,9 @@
     "node": "9.7.1"
   },
   "scripts": {
-    "build": "tsc",
-    "start": "tsc -w",
+    "build": "npm run format && tsc",
+    "start": "npm run format && tsc -w",
+    "format": "prettier src/**/*.ts src/**/*.js --write",
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:version": "npm run build && node dist/versionCheck.js"
   },
@@ -28,8 +29,20 @@
   "homepage": "https://github.com/almic/MusicMixer#readme",
   "devDependencies": {
     "@types/node": "9.6.0",
-    "semver": "6.3.1",
     "@types/semver": "6.2.0",
+    "prettier": "1.19.1",
+    "semver": "6.3.1",
     "typescript": "4.1.6"
+  },
+  "prettier": {
+    "arrowParens": "always",
+    "bracketSpacing": true,
+    "endOfLine": "crlf",
+    "printWidth": 110,
+    "singleQuote": true,
+    "semi": true,
+    "tabWidth": 4,
+    "trailingComma": "all",
+    "useTabs": false
   }
 }
