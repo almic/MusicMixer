@@ -5,92 +5,24 @@ Music mixing library, designed for general use in JavaScript applications.
 I made this for a personal project in RPGMaker, but the plugin is so big that I decided to just make general purpose
 and made a repository for it, mostly for organizational purposes.
 
-## How to Use
+## Version Information
 
-MusicMixer supports creating tracks with controls and filters, and you can queue sounds to play on those tracks with
-their own specific parameters. You can have as many tracks as you want, and tracks can play only one audio source at a
-time. Adding new audio sources to a track which is already playing audio will cross-fade to the new audio.
+Node version: `9.7.1`
 
-To support seamless looping and sound synchronization, most timing options use sample counts instead of seconds. For an
-audio source with a sample rate of 44.1kHz, this means the sample at position 44,100 corresponds to precisely 1 second.
-Changes to audio output (synchronization, volume, etc.) are always scheduled for a future time, but audio processing
-happens at CPU clock speeds, so even changes scheduled for "now" will practically take effect instantly.
+As this project is used for RPG Maker MV, it must run on the same node version that is packaged with games. Through the methods described below, I've determined that version. To ensure I'm testing things properly, I use `nvm` to set my project to the right node version, and develop that way.
 
-These are the steps to create tracks and play audio:
-  1. Create a track, giving a name, and optional controls like volume, panning, and filters.
-  2. Queue an audio source to play on a track, providing controls for the queued audio source, like volume, panning,
-  filters, and starting/ ending points. These apply directly to the audio source, independent of track controls which
-  apply to the final sound output.
-  3. Schedule the configured audio source to start playing on the track it has been assigned to. It will start playing
-  at the scheduled time.
-  4. Once the sound is playing, you can change its parameters, such as changing the loop section.
-  5. After a track has been created, you can also create markers, which are useful to synchronize other sounds on
-  different tracks, or for switching audio sources on the same track.
+Technically, once you deploy a game, you can overwrite the `node.dll` file with whatever version of node you want to use, but it's not that important to me and I don't want to think about debugging that. So, here's how I (and you can, too) determined the precise bundled version of node with RPG Maker MV.
 
-Example simple usage:
-```javascript
-// Create track
-//                      name,   options
-MusicMixer.createTrack('music', {volume: 50});
+1. Locate the RPG Maker MV root folder. If you use it on Steam, it should be here: `Steam/steamapps/common/RPG Maker MV`.
+2. Locate the `nwjs-win` folder (if you develop on linux, then it's `nwjs-lnx`)
+3. Create the file `RPG Maker MV/nwjs-win/www/index.html` and paste this inside:
+    ```html
+    <p id="version"></p>
 
-// Queue audio onto the track
-//                     file path,           track,  options
-MusicMixer.queueAudio('audio/Village.ogg', 'music', {loopStart: 804825, loopEnd: 2579850});
+    <script>
+    document.getElementById("version").innerHTML = process.version;
+    </script>
+    ```
+4. Save the file, run the executable file `RPG Maker MV/nwjs-win/Game.exe`, see the version printed on screen.
 
-// Schedule the audio to play immediately
-//                        track,  time
-MusicMixer.scheduleAudio('music', 0);
-
-// Schedule the audio to stop in the future, fading out over a duration
-MusicMixer.stopAudio('music', {delay: 5, duration: 7});
-```
-
-Advanced uses:
-```javascript
-// Add marker 'beat' to the track. Markers are always in seconds, yet you can specify sample times only if the track
-// has playing audio, using the next example.
-
-//                    track,   name,  options
-MusicMixer.addMarker('music', 'beat', {time: 0, interval: 1});
-
-// Using sample timings, can interchange sample time and sample interval with seconds 'time' and seconds 'interval'.
-// Requires playing audio on the track, as sample times are converted into seconds using the sample rate.
-
-//                    track,   name,  options
-MusicMixer.addMarker('music', 'beat', {sample: 82, sampleInterval: 44100});
-
-// Schedule audio to begin playing on a beat, with 0 fade time. This can be used to create seamless jumps in the same
-// audio source, or perfectly synchronize a beat track with the music
-
-MusicMixer.queueAudio(
-    'audio/VillageBeat.ogg',
-    'beat',
-    {loopStart: 88200, loopEnd: 1411200}
-);
-MusicMixer.scheduleAudio(
-    'beat',
-    {marker: 'music#beat'}
-);
-
-// Adjust track controls, such as fading music over time. Unless the audio stops playing by reaching the end, setting
-// volume to zero will retain the audio source and continue playing muted. Increasing the volume later can provide the
-// effect of a player moving far away from the source and then returning.
-
-//                                  track,  delay, duration, options
-MusicMixer.scheduleTrackAdjustment('music', 0,     2,        {volume: 0});
-
-// Similar to `scheduleTrackAdjustment`, except it applies to the primary audio source on the track instead of the
-// track, and is timed according to the sample time of the audio source. Requires playing audio on the track.
-
-//                                  track,  options
-MusicMixer.scheduleAudioAdjustment('music', {from: 573300, to: 683550, pan: -1, volume: 0});
-
-// Schedule loop change on a track, requires playing audio as it uses sample timings. Reaching/ passing `loopEnd` jumps
-// output to `loopStart`. For a loop to trigger, the audio output needs to be at either `loopStart`, `loopEnd`, or
-// between the two points. You can even use this to "loop" forward in time, but be aware that forward "loops" run on
-// timers as they aren't officially supported, so scheduling a small jump within milliseconds of the jump time may
-// fail to trigger!
-
-//                                  track,  options
-MusicMixer.scheduleAudioAdjustment('music', {loopStart: 804825, loopEnd: 2579850});
-```
+You can do this same process for deployed games as well, just open the same `www/index.html` file from your build and add the code to the body section. You might be able to use an "alert()" instead.
