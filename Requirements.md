@@ -126,6 +126,8 @@ MusicMixer must allow a developer to assign logic to tracks. This will function 
 - Event: `startPlayback`, Parameters: track object, start options. Called as soon as the track schedules the start of its audio source, even if it might be delayed for some time.
 - Event: `stopPlayback`, Parameters: track object, stop options. Called as soon as the track schedules to stop playing its audio source, even if it might be delayed for some time.
 - Event: `beat`, Parameters: track object, beat specification that triggered this beat and the time it will occur. Called when the track determines it is about to generate a beat during playback. This will be the method by which track timing synchronization happens. Due to the nature of audio playback, this event must be emitted when the beat is scheduled, before the actual beat time.
+- Event: `position`, Parameters: track object, position. Called when playback position updates, roughly every frame or so. Reliable enough for complex music logic with some inherent delay, but should not be used for immediate changes to playback that require precision.
+- Event: `silenced`, Parameters: track object, time. Called sometime after the track goes quiet, i.e. all sources are not playing or are silent (volume = 0). Reliable enough for complex music logic with some inherent delay, but should not be used for immediate changes to playback that require precision.
 
 ### Race Condition Handling
 
@@ -274,3 +276,133 @@ MMTrackPlaySource music halo1.ogg
 // ... level changes
 MMTrackPlaySource music halo3.ogg swap:fadeOutIn swapDelay:1
 ```
+
+### Potential Example 6: Creating a beat timer and synchronizing tracks
+
+JavaScript:
+```javascript
+let musicGroup = musicMixer.newTrackGroup('music');
+
+let drumsTrack  = musicGroup.newTrack('drums',  './assets/music/drums.ogg');
+let bassTrack   = musicGroup.newTrack('bass',   './assets/music/bass.ogg');
+let vocalsTrack = musicGroup.newTrack('vocals', './assets/music/vocals.ogg');
+
+// Start our drums track immediately
+drumsTrack.start();
+
+drumsTrack.createBeat('repeating', 0, 2); // starting at 0 seconds, repeat every 2 seconds
+drumsTrack.createBeat('exclude', 20, 25); // exclude this range, imagine drums going crazy
+bassTrack.createBeat('precise', 20);      // land vocal at 20 seconds
+
+// ... some time later, an enemy appears
+// drums + bass
+bassTrack.syncPlayTo(drumsTrack);
+
+// ... some time later, a super boss appears
+// drums + bass + vocals
+vocalsTrack.syncPlayTo(bassTrack);
+
+// ... some time later, you want to stop playback on a beat
+drumsTrack.clearBeats();
+drumsTrack.createBeat('precise', 25);
+
+// Will stop playing simultaneously
+bassTrack.syncStopTo(drumsTrack);
+vocalsTrack.syncStopTo(drumsTrack);
+```
+
+RPGMMV:
+```javascript
+MMNewTrackGroup music
+MMTrackPlaySource music drums.ogg
+MMTrackLoadSource music bass.ogg
+MMTrackLoadSource music vocals.ogg
+
+MMTrackStart music.drums
+
+MMTrackCreateBeat music.drums repeating 0 2
+MMTrackCreateBeat music.drums exclude 20 25
+MMTrackCreateBeat music.bass precise 20
+
+// ... some time later, an enemy appears
+MMTrackSyncPlayTo music.bass music.drums
+
+// ... some time later, a super boss appears
+MMTrackSyncPlayTo music.vocals music.bass
+
+// ... some time later, you want to stop playback on a beat
+MMTrackClearBeats music.drums
+MMTrackCreateBeat music.drums precise 25
+
+MMTrackSyncStopTo music.bass music.drums
+MMTrackSyncStopTo music.vocals music.drums
+```
+
+### Potential Example 7: Complex music logic using events
+
+These examples will not include much original code, only what it might look like to switch tracks on/ off with more customized logic. It goes without saying that this isn't possible with RPGMMV!
+
+JavaScript:
+```javascript
+let musicGroup = musicMixer.newTrackGroup('music');
+
+let drumsTrack  = musicGroup.newTrack('drums',  './assets/music/drums.ogg');
+let bassTrack   = musicGroup.newTrack('bass',   './assets/music/bass.ogg');
+let vocalsTrack = musicGroup.newTrack('vocals', './assets/music/vocals.ogg');
+
+// Assume we've sync'd everything up like in Example 6, but we want something more fluid to stop playback
+vocalsTrack.listenFor('position', async (track, position) => {
+    if (position >= 20) {
+        // Fade out on the next beat, or in 2 seconds
+        const fadeOut = {type: 'exp', delay: 0, duration: 2};
+        track.syncStopTo(drumsTrack, fadeOut);
+        track.stop(4, fadeOut); // fun detail, delays are added together
+
+        // Wait for vocals to silence, then make our drum and bass go out in style!
+        vocalsTrack.listenFor('silenced', async (t, time) => {
+
+            // In general, it's a good idea to leave a fallback fadeout timer for exceptional cases
+            // In this example, we expect our logic to stop playback within 10 seconds
+            drumsTrack.stop(10, fadeOut);
+            bassTrack.stop(10, fadeOut);
+
+            const drumsPosition = drumsTrack.position();
+
+            // Wacky time is too far away, make a jump to start it soon!
+            // (Remember, from Example 6, the wacky time is excluded from generating beats)
+            if (drumsPosition < 16 || drumsPosition > 35) {
+                // useful trick, we know the beat is every 2s, and can jump on the next one that is more than 0.2 seconds away
+                drumsTrack.jump(true, Math.round((drumsPosition + 1.2) / 2) * 2, 20);
+
+                // generally, we can schedule a jump using our own beat events
+                // this is the same way tracks synchronize themselves, so beat is as good as guaranteed to be in the future!
+                drumsTrack.listenFor('beat', async (t2, beat) => {
+                    drumsTrack.jump(true, beat.time, 20);
+
+                    drumsTrack.clearBeats();
+                    drumsTrack.createBeat('precise', 25);
+
+                    drumsTrack.syncStopTo(drumsTrack); // can sync to stop on our own beat!
+                    bassTrack.syncStopTo(drumsTrack);
+                });
+
+                return;
+            }
+
+            // Wacky time is just about to end, we can simply schedule to stop on the next beat
+            if (drumsPosition <= 24.8) {
+                drumsTrack.syncStopTo(drumsTrack);
+                bassTrack.syncStopTo(drumsTrack);
+                return;
+            }
+
+            // Wacky time has ended recently, don't play it again, just fade out quickly
+            drumsTrack.stop(1, fadeOut);
+            bassTrack.stop(1, fadeOut);
+
+        });
+    }
+});
+```
+
+RPGMMV: **Unsupported**. Events are strictly JavaScript only.
