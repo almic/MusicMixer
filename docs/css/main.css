@@ -1,0 +1,139 @@
+/* Font Imports */
+@import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap');
+
+body {
+    font-family: 'Source Code Pro', 'Courier New', Courier, monospace;
+}
+
+.center {
+    width: 80%;
+    margin: 0 10%;
+}
+
+.center-text {
+    text-align: center;
+}
+
+.page-style {
+    margin-top: 3rem;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    min-height: calc(100% - 6rem) !important;
+    border-width: 1px;
+    border-style: solid;
+    border-image: linear-gradient(
+            to bottom,
+            rgba(0, 255, 255, 0) 0%,
+            rgba(0, 255, 255, 1) min(7%, 80px),
+            rgba(0, 255, 255, 1) calc(100% - min(7%, 80px)),
+            rgba(0, 255, 255, 0) 100%
+        )
+        1 100%;
+}
+
+p {
+    font-size: 1rem;
+    font-weight: 350;
+}
+
+h1 {
+    font-size: 2.8rem;
+    font-weight: 640;
+}
+
+h2 {
+    font-size: 2.2rem;
+    font-weight: 600;
+}
+
+h3 {
+    font-size: 1.5rem;
+    font-weight: 720;
+}
+
+div.clickable:hover {
+    cursor: pointer;
+}
+
+a {
+    color: #5fccff;
+    text-decoration: none;
+    transition: color 80ms linear, border-color 80ms linear;
+    border-bottom: 1px solid rgba(95, 204, 255, 0);
+}
+
+a:hover,
+div.clickable:hover a {
+    color: #75d3ff;
+    border-bottom-color: rgba(117, 211, 255, 1);
+}
+
+div.grid-box {
+    display: grid;
+    gap: 32px;
+    grid-template-columns: auto auto auto;
+}
+
+div.grid-box > div {
+    padding: 1.8rem;
+}
+
+div.grid-box h3 {
+    margin: 0;
+}
+
+div.glow-responsive {
+    box-shadow: 0 0 0px rgba(0, 255, 255, 0);
+    background: radial-gradient(ellipse 29% 100% at left -25% bottom 32%, #00ffff, transparent) padding-box,
+        radial-gradient(ellipse 29% 100% at right -25% bottom 32%, #00ffff, transparent) padding-box,
+        radial-gradient(ellipse 100% 31% at left 50% bottom -25%, #00ffff, #000000) padding-box;
+    background-size: 108% 106%;
+    background-position: 50% 0%;
+    transition: background-size 80ms ease-out, box-shadow 80ms ease-out;
+}
+
+div.glow-responsive:hover {
+    box-shadow: 0 0 7px rgba(0, 255, 255, 0.25);
+    background-size: 100% 100%;
+}
+
+div.border-responsive {
+    --borderResponsiveWidth: 1px;
+    position: relative;
+    background-clip: padding-box;
+    border: solid var(--borderResponsiveWidth) transparent;
+    border-radius: 13px;
+}
+
+div.border-responsive::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: -1;
+    margin: calc(0px - var(--borderResponsiveWidth));
+    border-radius: inherit;
+    background: linear-gradient(
+        to bottom,
+        rgba(95, 204, 255, 0.3) 0%,
+        rgba(95, 204, 255, 0.3) 39%,
+        rgba(95, 204, 255, 1) 50%
+    );
+    background-size: 1px 200%;
+    transition: background 80ms ease-out;
+}
+
+div.border-responsive:hover::before {
+    background-position-y: 80%;
+}
+
+.text-glow-responsive {
+    text-shadow: 0 0 2px;
+    transition: text-shadow 1.5s ease-out;
+}
+
+.text-glow-responsive:hover {
+    text-shadow: 0 0 4px;
+}
