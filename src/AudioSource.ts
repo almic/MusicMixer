@@ -1,27 +1,61 @@
 /**
- * AudioSource options
+ * Adjustment options to use when changing volume, panning, etc.
  */
-type AudioSourceOptions = {
-    volume?: number;
-    panning?: number;
+export type AudioAdjustmentOptions = {
+    ramp?: 'linear' | 'exponential' | 'natural' | number[];
+    delay?: number;
+    duration?: number;
 };
 
 /**
  * AudioSource
  */
 class AudioSource {
-    constructor() {}
+    private sourceNode: AudioBufferSourceNode | undefined;
+    private readonly gainNode: GainNode;
+    private readonly stereoPannerNode: StereoPannerNode;
 
-    connect(destination: AudioNode) {
-        console.log(`stub connect to ${destination}`);
+    constructor(private readonly audioContext: AudioContext, readonly destination?: AudioNode) {
+        this.gainNode = audioContext.createGain();
+        this.stereoPannerNode = audioContext.createStereoPanner();
+
+        this.stereoPannerNode.connect(this.gainNode);
+        if (destination) {
+            this.gainNode.connect(destination);
+        }
     }
 
-    load(path: string) {
-        console.log(`stub load path ${path}`);
+    connect(destination: AudioNode): AudioSource {
+        this.gainNode.disconnect();
+        this.gainNode.connect(destination);
+        return this;
     }
 
-    options(options: AudioSourceOptions): void {
-        console.log(`stub options set to ${options}`);
+    async load(path: string): Promise<void> {
+        const buffer = await fetch(path);
+        const arrayBuffer = await buffer.arrayBuffer();
+        const decodedBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+
+        const sourceNode = this.audioContext.createBufferSource();
+        sourceNode.buffer = decodedBuffer;
+        this.sourceNode = sourceNode;
+        this.sourceNode.connect(this.gainNode);
+    }
+
+    volume(volume: number, options?: AudioAdjustmentOptions): AudioSource {
+        console.log(`stub volume ${volume} with options ${options}`);
+        return this;
+    }
+
+    pan(pan: number, options?: AudioAdjustmentOptions): AudioSource {
+        console.log(`stub pan ${pan} with options ${options}`);
+        return this;
+    }
+
+    pan3d(): AudioSource {
+        // TODO: ...someday...
+        // https://github.com/twoz/hrtf-panner-js/blob/master/hrtf.js
+        return this;
     }
 }
 

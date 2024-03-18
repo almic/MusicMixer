@@ -1,6 +1,6 @@
-import AudioSource from './AudioSource';
+import AudioSource, { AudioAdjustmentOptions } from './AudioSource';
 import TrackSingle from './Track';
-import { Track, TrackGroup, AdjustmentOptions } from './Track';
+import { Track, TrackGroup } from './Track';
 
 /**
  * MusicMixer
@@ -17,21 +17,12 @@ class MusicMixer {
         this.gainNode.connect(this.audioContext.destination);
     }
 
-    /**
-     * Loads an audio source and returns it
-     */
-    static loadSource(path: string): AudioSource {
-        console.log(`stub loading ${path} audio file`);
-        return new AudioSource();
-    }
-
-    /**
-     * Loads and audio source and queues immediate playback on a new track.
-     * Returns the new track.
-     */
-    playSource(path?: string, source?: AudioSource): Track {
-        console.log(`stub playing ${path} audio file or source ${source}`);
-        return this.newTrack(path ?? 'unknown', path, source);
+    private loadSource(path?: string): AudioSource {
+        const audioSource = new AudioSource(this.audioContext);
+        if (path) {
+            audioSource.load(path);
+        }
+        return audioSource;
     }
 
     /**
@@ -43,7 +34,7 @@ class MusicMixer {
         }
         let audioSource = source;
         if (!audioSource) {
-            audioSource = MusicMixer.loadSource(path ?? '');
+            audioSource = this.loadSource(path);
         }
         const track = new TrackSingle(name, this.audioContext, this.gainNode, audioSource);
         this.tracks[name] = track;
@@ -59,18 +50,23 @@ class MusicMixer {
         }
         let audioSource = source;
         if (!audioSource) {
-            audioSource = MusicMixer.loadSource(path ?? '');
+            audioSource = this.loadSource(path);
         }
         const track = new TrackGroup(name, this.audioContext, this.gainNode, audioSource);
         this.tracks[name] = track;
         return track;
     }
 
+    track(name: string): Track | undefined {
+        return this.tracks[name];
+    }
+
     /**
      * Adjusts the volume output of the mixer
      */
-    volume(volume: number, options?: AdjustmentOptions): void {
+    volume(volume: number, options?: AudioAdjustmentOptions): MusicMixer {
         console.log(`stub volume changed to ${volume} with ${options}`);
+        return this;
     }
 }
 

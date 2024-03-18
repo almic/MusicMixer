@@ -28,7 +28,7 @@ enum TrackEventType {
  * When swapping two audio sources on a single track, `swap` and `swapDelay` are used to determine the swap
  * order and delay between the two audio sources.
  */
-export type AdjustmentOptions = {
+type TrackAdjustmentOptions = {
     ramp?: 'linear' | 'exponential' | 'natural' | number[];
     delay?: number;
     duration?: number;
@@ -62,7 +62,7 @@ interface Track {
      * @param delay optional delay time
      * @param options adjustment parameters
      */
-    start(delay?: number, options?: AdjustmentOptions): Track;
+    start(delay?: number, options?: TrackAdjustmentOptions): Track;
 
     /**
      * Stop playback on the track.
@@ -71,7 +71,7 @@ interface Track {
      * @param delay optional delay time
      * @param options adjustment parameters
      */
-    stop(delay?: number, options?: AdjustmentOptions): Track;
+    stop(delay?: number, options?: TrackAdjustmentOptions): Track;
 
     /**
      * Loads and immediately starts playback of an audio source. If there is already an audio source
@@ -79,7 +79,7 @@ interface Track {
      * @param path audio source path
      * @param options adjustment parameters
      */
-    playSource(path: string, options?: AdjustmentOptions): AudioSource;
+    playSource(path: string, options?: TrackAdjustmentOptions): AudioSource;
 
     /**
      * Loads an audio source and returns it. The audio source will be linked to this track, so that
@@ -95,7 +95,7 @@ interface Track {
      * @param volume gain percentage
      * @param options adjustment parameters
      */
-    volume(volume: number, options?: AdjustmentOptions): Track;
+    volume(volume: number, options?: TrackAdjustmentOptions): Track;
 
     /**
      * Enabled/ disable a loop, and set timings.
@@ -134,7 +134,7 @@ interface Track {
      * @param track track
      * @param options adjustment parameters
      */
-    syncPlayTo(track: Track, options?: AdjustmentOptions): Track;
+    syncPlayTo(track: Track, options?: TrackAdjustmentOptions): Track;
 
     /**
      * Schedules this track to stop playback precisely when the given track generates a beat.
@@ -143,15 +143,15 @@ interface Track {
      * @param track track
      * @param options adjustment parameters
      */
-    syncStopTo(track: Track, options?: AdjustmentOptions): Track;
+    syncStopTo(track: Track, options?: TrackAdjustmentOptions): Track;
 
     /**
      * Assigns a callback to be called for the event. The first arguement is always the calling track.
      *
      * Signatures are:
      *
-     * - `startPlayback(track, startOptions)` => ({@link Track}, {@link AdjustmentOptions})
-     * - `stopPlayback(track, stopOptions)` => ({@link Track}, {@link AdjustmentOptions})
+     * - `startPlayback(track, startOptions)` => ({@link Track}, {@link TrackAdjustmentOptions})
+     * - `stopPlayback(track, stopOptions)` => ({@link Track}, {@link TrackAdjustmentOptions})
      * - `beat(track, beat)` => ({@link Track}, {@link TrackBeat})
      * - `position(track, time)` => ({@link Track}, `number`)
      * - `silenced(track, time)` => ({@link Track}, `number`)
@@ -183,27 +183,27 @@ class TrackSingle implements Track {
         return `TrackSingle[${this.name}] with context ${this.audioContext} and source ${this.source}`;
     }
 
-    start(delay?: number, options?: AdjustmentOptions): Track {
+    start(delay?: number, options?: TrackAdjustmentOptions): Track {
         console.log(`stub start with ${delay} seconds of delay with options ${options}`);
         return this;
     }
 
-    stop(delay?: number, options?: AdjustmentOptions): Track {
+    stop(delay?: number, options?: TrackAdjustmentOptions): Track {
         console.log(`stub stop with ${delay} seconds of delay with options ${options}`);
         return this;
     }
 
-    playSource(path: string, options?: AdjustmentOptions): AudioSource {
+    playSource(path: string, options?: TrackAdjustmentOptions): AudioSource {
         console.log(`stub playSource at ${path} with ${options}`);
-        return new AudioSource();
+        return new AudioSource(this.audioContext, this.gainNode);
     }
 
     loadSource(path: string): AudioSource {
         console.log(`stub loadSource at ${path}`);
-        return new AudioSource();
+        return new AudioSource(this.audioContext, this.gainNode);
     }
 
-    volume(volume: number, options?: AdjustmentOptions): Track {
+    volume(volume: number, options?: TrackAdjustmentOptions): Track {
         console.log(`stub volume changed to ${volume} with ${options}`);
         return this;
     }
@@ -228,12 +228,12 @@ class TrackSingle implements Track {
         return this;
     }
 
-    syncPlayTo(track: Track, options?: AdjustmentOptions): Track {
+    syncPlayTo(track: Track, options?: TrackAdjustmentOptions): Track {
         console.log(`stub syncPlayTo ${track} with options ${options}`);
         return this;
     }
 
-    syncStopTo(track: Track, options?: AdjustmentOptions): Track {
+    syncStopTo(track: Track, options?: TrackAdjustmentOptions): Track {
         console.log(`stub syncStopTo ${track} with options ${options}`);
         return this;
     }
@@ -294,7 +294,7 @@ class TrackGroup implements Track {
         }
         let audioSource = source;
         if (!audioSource) {
-            audioSource = new AudioSource();
+            audioSource = new AudioSource(this.audioContext, this.gainNode);
             if (path) {
                 audioSource.load(path);
             }
@@ -307,7 +307,7 @@ class TrackGroup implements Track {
     /**
      * Starts playback of all tracks in this group.
      */
-    start(delay?: number, options?: AdjustmentOptions): Track {
+    start(delay?: number, options?: TrackAdjustmentOptions): Track {
         for (const track in this.tracks) {
             this.tracks[track]?.start(delay, options);
         }
@@ -317,14 +317,14 @@ class TrackGroup implements Track {
     /**
      * Stops playback of all tracks in this group.
      */
-    stop(delay?: number, options?: AdjustmentOptions): Track {
+    stop(delay?: number, options?: TrackAdjustmentOptions): Track {
         for (const track in this.tracks) {
             this.tracks[track]?.stop(delay, options);
         }
         return this;
     }
 
-    playSource(path: string, options?: AdjustmentOptions): AudioSource {
+    playSource(path: string, options?: TrackAdjustmentOptions): AudioSource {
         return this.primaryTrack().playSource(path, options);
     }
 
@@ -335,7 +335,7 @@ class TrackGroup implements Track {
     /**
      * Adjusts the volume output of this group.
      */
-    volume(volume: number, options?: AdjustmentOptions): Track {
+    volume(volume: number, options?: TrackAdjustmentOptions): Track {
         console.log(`stub volume changed to ${volume} with ${options}`);
         return this;
     }
@@ -367,7 +367,7 @@ class TrackGroup implements Track {
     /**
      * Synchronizes playback of all tracks in the group.
      */
-    syncPlayTo(track: Track, options?: AdjustmentOptions): Track {
+    syncPlayTo(track: Track, options?: TrackAdjustmentOptions): Track {
         for (const t in this.tracks) {
             this.tracks[t]?.syncPlayTo(track, options);
         }
@@ -377,7 +377,7 @@ class TrackGroup implements Track {
     /**
      * Synchronizes stopping of all track in the group.
      */
-    syncStopTo(track: Track, options?: AdjustmentOptions): Track {
+    syncStopTo(track: Track, options?: TrackAdjustmentOptions): Track {
         for (const t in this.tracks) {
             this.tracks[t]?.syncStopTo(track, options);
         }
