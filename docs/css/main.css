@@ -129,6 +129,28 @@ div.border-responsive:hover::before {
     background-position-y: 80%;
 }
 
+ul.no-bullets {
+    list-style-type: none;
+    padding: 0;
+}
+
+ul.list-blocks > li {
+    border-width: 1px;
+    border-style: solid;
+    border-image: linear-gradient(
+            to right,
+            rgba(0, 255, 255, 0) 0%,
+            rgba(0, 255, 255, 1) min(7%, 80px),
+            rgba(0, 255, 255, 1) calc(100% - min(7%, 80px)),
+            rgba(0, 255, 255, 0) 100%
+        )
+        1;
+}
+
+.text-glow {
+    text-shadow: 0 0 2px;
+}
+
 .text-glow-responsive {
     text-shadow: 0 0 2px;
     transition: text-shadow 1.5s ease-out;
