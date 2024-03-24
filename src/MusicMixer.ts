@@ -1,4 +1,4 @@
-import AudioSourceNode, { AudioAdjustmentOptions } from './AudioSource';
+import AudioSourceNode, { AudioAdjustmentOptions } from './AudioSourceNode';
 import TrackSingle, { Track, TrackGroup } from './Track';
 
 /**
