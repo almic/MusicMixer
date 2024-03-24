@@ -11,7 +11,8 @@
     "start": "npm run format && tsc -w",
     "format": "prettier src/**/*.ts src/**/*.js --write",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "test:version": "npm run build && node dist/versionCheck.js"
+    "test:version": "npm run build && node dist/versionCheck.js",
+    "test:float": "npm run build && node dist/float32test.js"
   },
   "repository": {
     "type": "git",

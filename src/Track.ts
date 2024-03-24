@@ -1,6 +1,10 @@
-import AudioSource from './AudioSource';
+import AudioSourceNode, { AudioAdjustmentOptions } from './AudioSource';
 
-type TrackBeat = {
+/**
+ * Type representing a beat of a Track. Contains cancellation logic so third-parties can cancel specific
+ * beat rules on a given Track. Also used for passing beat events to callbacks.
+ */
+export type TrackBeat = {
     time: number;
     isCancelled: boolean;
 
@@ -14,41 +18,116 @@ type TrackBeat = {
     cancel(): void;
 };
 
-enum TrackEventType {
-    START_PLAYBACK = 'startPlayback',
-    STOP_PLAYBACK = 'stopPlayback',
-    BEAT = 'beat',
-    POSITION = 'position',
-    SILENCED = 'silenced',
+/**
+ * Enumeration for track beat types. If writing with TypeScript, use these.
+ */
+export enum TrackBeatType {
+    /**
+     * Repeating beat, firing every `S + xR` seconds where S is the start point and R is the repeat seconds
+     */
+    REPEATING = 'repeating',
+
+    /**
+     * Precise beat, fires on an exact time
+     */
+    PRECISE = 'precise',
+
+    /**
+     * Exclusion region, beats that would fire in this region... won't fire
+     */
+    EXCLUDE = 'exclude',
 }
 
 /**
- * Adjustment options to use when changing volume, panning, etc.
+ * Enumeration for track event types. If writing with TypeScript, use these.
  *
- * When swapping two audio sources on a single track, `swap` and `swapDelay` are used to determine the swap
- * order and delay between the two audio sources.
+ * Deprecation Notice: Depending on how these are used or misused, some may be removed, added, or change
+ * in future versions. In general, you should never tie any game logic to these events. Only use the
+ * events for sound-specific things.
  */
-type TrackAdjustmentOptions = {
-    ramp?: 'linear' | 'exponential' | 'natural' | number[];
-    delay?: number;
-    duration?: number;
-
+export enum TrackEventType {
     /**
-     * Order of operation when swapping sources on a track via start() and playSource().
-     *
-     * - `rampInOut`: ramps in the new source, waits `swapDelay`, then ramps out the old source
-     * - `rampOutIn`: ramps out the old source, waits `swapDelay`, then ramps in the new source
-     * - `rampCross`: ramps both sources at the same time, ignoring `swapDelay`
-     * - `cut`: instantly stops the old source and starts the new source with sub-sample precision
+     * Fires when a track is scheduling to start playback.
+     * - `startPlayback(track, startOptions)` => ({@link Track}, {@link AudioAdjustmentOptions})
      */
-    swap?: 'rampInOut' | 'rampOutIn' | 'rampCross' | 'cut';
+    START_PLAYBACK = 'startPlayback',
 
     /**
-     * Time to wait between actions for `rampInOut` and `rampOutIn` swapping.
-     *
-     * Only when swapping audio sources on a track via start() and playSource().
+     * Fires when a track is scheduling to stop playback. If you need to fire when a playing AudioSource
+     * goes silent, i.e. when it truly stops playing, use the {@link SILENCED} event instead.
+     * - `stopPlayback(track, stopOptions)` => ({@link Track}, {@link AudioAdjustmentOptions})
+     */
+    STOP_PLAYBACK = 'stopPlayback',
+
+    /**
+     * - `beat(track, beat)` => ({@link Track}, {@link TrackBeat})
+     */
+    BEAT = 'beat',
+
+    /**
+     * Fires regularly from `requestAnimFrame()`. Naturally, this creates a performance hit the more
+     * callbacks are tied to this event. If you have any sort of complexity, it's strongly suggested
+     * to run your own rendering pipeline and directly access
+     * - `position(track, time)` => ({@link Track}, `number`)
+     */
+    POSITION = 'position',
+
+    /**
+     * Fires when a playing AudioSource goes silent, i.e. its no longer playing. This uses the built-in
+     * "ended" event on AudioBufferSourceNodes.
+     * - `silenced(track, time)` => ({@link Track}, `number`)
+     */
+    SILENCED = 'silenced',
+}
+
+export enum TrackSwapType {
+    /**
+     * Ramps in the new source and then ramps out the old source
+     */
+    IN_OUT = 'inOut',
+
+    /**
+     * Ramps out the old source and then ramps in the new source
+     */
+    OUT_IN = 'outIn',
+
+    /**
+     * Ramps both sources at the same time
+     */
+    CROSS = 'cross',
+
+    /**
+     * Cuts directly from old source to the new source
+     */
+    CUT = 'cut',
+}
+
+/**
+ * Simple adjustment options to use when swapping between two AudioSources on a track.
+ * Includes all options from AudioAdjustmentOptions.
+ */
+export type TrackSwapOptions = AudioAdjustmentOptions & {
+    /**
+     * Order of operation when swapping sources
+     */
+    swap?: TrackSwapType;
+
+    /**
+     * Delay between the end of the old source and the start of the new source.
+     * To achieve the effect, implementations add the delay and duration of the
+     * adjustment to this value, and use it as the starting delay on the new source.
      */
     swapDelay?: number;
+};
+
+/**
+ * Advanced swap specification for swapping between two AudioSources on a track.
+ * Both adjustments are applied simultaneously to each source. Internally, one
+ * of these is produced from given {@link TrackSwapOptions} and used for swapping.
+ */
+export type TrackSwapAdvancedOptions = {
+    oldSource: AudioAdjustmentOptions;
+    newSource: AudioAdjustmentOptions;
 };
 
 /**
@@ -56,60 +135,102 @@ type TrackAdjustmentOptions = {
  */
 interface Track {
     /**
-     * Begin playback on the track.
+     * Begin playback on the track, starting the loaded AudioSource.
      *
-     * If both `delay` and `options.delay` are provided, they are added together.
+     * Implementation Notes:
+     * - When both `delay` and `options.delay` are provided, they are added together.
+     * - If this call follows a `loadSource()`, it will call `swap()` using a default OUT_IN swap.
+     *   Use `swap()` directly for more control.
+     * - If the AudioSource attached to this Track is already playing, this will create a copy of
+     *   the AudioSource and start it over with a `swap()` call.
+     * - Using `duration` is equivalent to calling `start(delay, options)` and then `stop(delay + duration)`
      * @param delay optional delay time
      * @param options adjustment parameters
+     * @param duration how long to play before stopping
+     * @returns {Track} this Track
      */
-    start(delay?: number, options?: TrackAdjustmentOptions): Track;
+    start(delay?: number, options?: AudioAdjustmentOptions, duration?: number): Track;
 
     /**
-     * Stop playback on the track.
+     * Stop playback on the track, pausing the currently playing AudioSource.
      *
-     * If both `delay` and `options.delay` are provided, they are added together.
+     * Implementation Notes:
+     * - When both `delay` and `options.delay` are provided, they are added together.
+     * - Does nothing if there is no playing AudioSource.
+     * - Saves the playhead position of the AudioSource at the time this method is called,
+     *   so that a future `start()` call will resume from the saved position.
      * @param delay optional delay time
      * @param options adjustment parameters
+     * @returns {Track} this Track
      */
-    stop(delay?: number, options?: TrackAdjustmentOptions): Track;
+    stop(delay?: number, options?: AudioAdjustmentOptions): Track;
 
     /**
-     * Loads and immediately starts playback of an audio source. If there is already an audio source
-     * playing, once the new one is loaded, it will be stopped and the new source will start.
+     * Loads and immediately starts playback of an audio source.
+     *
+     * Implementation Notes:
+     * - If this call follows another `playSource()`, or a `start()`, it will call
+     *   `swap()` using the given `options`. Use `swap()` directly for more control.
+     * - This should call `loadSource(path)`, then `swap(options)`
      * @param path audio source path
      * @param options adjustment parameters
+     * @returns {AudioSourceNode} the new AudioSource
      */
-    playSource(path: string, options?: TrackAdjustmentOptions): AudioSource;
+    playSource(path: string, options?: AudioAdjustmentOptions): AudioSourceNode;
 
     /**
      * Loads an audio source and returns it. The audio source will be linked to this track, so that
      * calling `start()` will play the last loaded audio source. You may use this to load a second
      * audio source while one is already playing, it will not be swapped until a call to `start()`
-     * is made.
+     * or `swap()` is made.
      * @param path audio source path
+     * @returns {AudioSourceNode} the new AudioSource
      */
-    loadSource(path: string): AudioSource;
+    loadSource(path: string): AudioSourceNode;
+
+    /**
+     * Swaps the currently playing AudioSource with the loaded AudioSource.
+     *
+     * Implementation Notes:
+     * - After this method returns, all methods that modify the AudioSource of this Track will
+     *   modify the new source that has been swapped in.
+     * @param options swap parameters
+     * @returns {Track} this Track
+     */
+    swap(options?: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
 
     /**
      * Set the volume of this track.
-     * @param volume gain percentage
+     * @param volume gain multiplier
      * @param options adjustment parameters
+     * @returns {Track} this Track
      */
-    volume(volume: number, options?: TrackAdjustmentOptions): Track;
+    volume(volume: number, options?: AudioAdjustmentOptions): Track;
 
     /**
      * Enabled/ disable a loop, and set timings.
+     *
+     * Implementation Notes:
+     * - Uses the AudioBufferSourceNode built-in looping parameters directly
      * @param enabled true to enable looping
-     * @param startSample point to loop back to
-     * @param endSample trigger point for the loop
+     * @param startSample point to loop back to, must be before `endSample`
+     * @param endSample trigger point for the loop, must be after `startSample`
+     * @returns {Track} this Track
      */
     loop(enabled: boolean, startSample?: number, endSample?: number): Track;
 
     /**
      * Enable/ disable a jump, and set timings.
+     *
+     * Implementation Notes:
+     * - Uses a custom implementation that looks ahead to find the `fromSample`,
+     *   then schedules a CUT swap to the `toSample`. As a result, this can also
+     *   be used for looping, but that is provided separately so both can be used
+     *   at the same time.
      * @param enabled true to enable jumping
      * @param fromSample trigger point for the jump
      * @param toSample point to jump to
+     * @returns {Track} this Track
      */
     jump(enabled: boolean, fromSample?: number, toSample?: number): Track;
 
@@ -118,14 +239,16 @@ interface Track {
      *
      * Calling multiple times will stack beat rules. Use sparingly!
      * Returned TrackBeat can be used to cancel it later.
-     * @param type beat type, can be 'repeating' | 'precise' | 'exclude'
+     * @param type beat type
      * @param origin origin point for this beat or range
      * @param period duration (exclude) or period (repeating), or does nothing (precise)
+     * @returns {TrackBeat} the created TrackBeat
      */
-    createBeat(type: 'repeating' | 'precise' | 'exclude', origin: number, period?: number): TrackBeat;
+    createBeat(type: TrackBeatType, origin: number, period?: number): TrackBeat;
 
     /**
      * Clears all beats on this track and cancels them
+     * @returns {Track} this Track
      */
     clearBeats(): Track;
 
@@ -133,8 +256,9 @@ interface Track {
      * Schedules this track to start playback precisely when the given track generates a beat.
      * @param track track
      * @param options adjustment parameters
+     * @returns {Track} this Track
      */
-    syncPlayTo(track: Track, options?: TrackAdjustmentOptions): Track;
+    syncPlayTo(track: Track, options?: AudioAdjustmentOptions): Track;
 
     /**
      * Schedules this track to stop playback precisely when the given track generates a beat.
@@ -142,22 +266,15 @@ interface Track {
      * It is possible to synchronize a track to stop to itself.
      * @param track track
      * @param options adjustment parameters
+     * @returns {Track} this Track
      */
-    syncStopTo(track: Track, options?: TrackAdjustmentOptions): Track;
+    syncStopTo(track: Track, options?: AudioAdjustmentOptions): Track;
 
     /**
      * Assigns a callback to be called for the event. The first arguement is always the calling track.
-     *
-     * Signatures are:
-     *
-     * - `startPlayback(track, startOptions)` => ({@link Track}, {@link TrackAdjustmentOptions})
-     * - `stopPlayback(track, stopOptions)` => ({@link Track}, {@link TrackAdjustmentOptions})
-     * - `beat(track, beat)` => ({@link Track}, {@link TrackBeat})
-     * - `position(track, time)` => ({@link Track}, `number`)
-     * - `silenced(track, time)` => ({@link Track}, `number`)
-     *
      * @param type event to listen for
      * @param callback async function to execute
+     * @returns {Track} this Track
      */
     listenFor(type: TrackEventType, callback: Promise<any>): Track;
 }
@@ -172,80 +289,91 @@ class TrackSingle implements Track {
         private readonly name: string,
         private readonly audioContext: AudioContext,
         readonly destination: AudioNode,
-        private readonly source: AudioSource,
+        private readonly source: AudioSourceNode,
     ) {
         this.gainNode = audioContext.createGain();
         this.gainNode.connect(destination);
         source.connect(this.gainNode);
     }
 
-    toString(): string {
+    public toString(): string {
         return `TrackSingle[${this.name}] with context ${this.audioContext} and source ${this.source}`;
     }
 
-    start(delay?: number, options?: TrackAdjustmentOptions): Track {
-        console.log(`stub start with ${delay} seconds of delay with options ${options}`);
+    public start(delay?: number, options?: AudioAdjustmentOptions, duration?: number): Track {
+        console.log(
+            `stub start with ${delay} seconds of delay, for ${duration} seconds, with options ${options}`,
+        );
         return this;
     }
 
-    stop(delay?: number, options?: TrackAdjustmentOptions): Track {
+    public stop(delay?: number, options?: AudioAdjustmentOptions): Track {
         console.log(`stub stop with ${delay} seconds of delay with options ${options}`);
         return this;
     }
 
-    playSource(path: string, options?: TrackAdjustmentOptions): AudioSource {
+    public playSource(path: string, options?: AudioAdjustmentOptions): AudioSourceNode {
         console.log(`stub playSource at ${path} with ${options}`);
-        return new AudioSource(this.audioContext, this.gainNode);
+        const audioSource = this.loadSource(path);
+        this.start(0, options);
+        return audioSource;
     }
 
-    loadSource(path: string): AudioSource {
+    public loadSource(path: string): AudioSourceNode {
         console.log(`stub loadSource at ${path}`);
-        return new AudioSource(this.audioContext, this.gainNode);
+        return new AudioSourceNode(this.audioContext, this.gainNode);
     }
 
-    volume(volume: number, options?: TrackAdjustmentOptions): Track {
+    public swap(options?: TrackSwapOptions | TrackSwapAdvancedOptions): Track {
+        console.log(`stub swap with ${options}`);
+        return this;
+    }
+
+    public volume(volume: number, options?: AudioAdjustmentOptions): Track {
         console.log(`stub volume changed to ${volume} with ${options}`);
         return this;
     }
 
-    loop(enabled: boolean, startSample?: number, endSample?: number): Track {
+    public loop(enabled: boolean, startSample?: number, endSample?: number): Track {
         console.log(`stub loop ${enabled} in range ${startSample} to ${endSample}`);
         return this;
     }
 
-    jump(enabled: boolean, fromSample?: number, toSample?: number): Track {
+    public jump(enabled: boolean, fromSample?: number, toSample?: number): Track {
         console.log(`stub jump ${enabled} from ${fromSample} to ${toSample}`);
         return this;
     }
 
-    createBeat(type: 'repeating' | 'precise' | 'exclude', origin: number, period?: number): TrackBeat {
+    public createBeat(type: TrackBeatType, origin: number, period?: number): TrackBeat {
         console.log(`stub createBeat of ${type} at ${origin} with period ${period}`);
         return { time: 0, isCancelled: false, cancel: () => {} };
     }
 
-    clearBeats(): Track {
+    public clearBeats(): Track {
         console.log('stub clearBeats');
         return this;
     }
 
-    syncPlayTo(track: Track, options?: TrackAdjustmentOptions): Track {
+    public syncPlayTo(track: Track, options?: AudioAdjustmentOptions): Track {
         console.log(`stub syncPlayTo ${track} with options ${options}`);
         return this;
     }
 
-    syncStopTo(track: Track, options?: TrackAdjustmentOptions): Track {
+    public syncStopTo(track: Track, options?: AudioAdjustmentOptions): Track {
         console.log(`stub syncStopTo ${track} with options ${options}`);
         return this;
     }
 
-    listenFor(type: TrackEventType, callback: Promise<any>): Track {
+    public listenFor(type: TrackEventType, callback: Promise<any>): Track {
         console.log(`stub listenFor ${type} calling ${callback}`);
         return this;
     }
 }
 
 /**
- * TrackGroup
+ * TrackGroup. All TrackGroups are constructed with a primary Track that shares the same name as the group,
+ * to which most methods will operate as a transparent call onto the primary Track. Unless otherwise stated
+ * by the method's documentation, assume it acts directly onto the primary Track.
  */
 class TrackGroup implements Track {
     private tracks: {
@@ -258,7 +386,7 @@ class TrackGroup implements Track {
         private readonly name: string,
         private readonly audioContext: AudioContext,
         readonly destination: AudioNode,
-        private readonly source: AudioSource,
+        private readonly source: AudioSourceNode,
     ) {
         this.gainNode = audioContext.createGain();
         this.gainNode.connect(destination);
@@ -271,11 +399,25 @@ class TrackGroup implements Track {
         return `TrackGroup[${this.name}] with context ${this.audioContext} and source ${this.source}`;
     }
 
-    track(name: string): Track | undefined {
+    /**
+     * Retrieve a track by its name.
+     *
+     * @param name track name
+     * @returns {Track} if found, `undefined` otherwise
+     */
+    public track(name: string): Track | undefined {
         return this.tracks[name];
     }
 
-    primaryTrack(): Track {
+    /**
+     * Retrieve the primary Track for this TrackGroup. It will share the name of this TrackGroup
+     * and is guaranteed* to exist.
+     *
+     * \* Unless you do some funny business and delete it!
+     *
+     * @returns {Track} the primary Track of this TrackGroup
+     */
+    public primaryTrack(): Track {
         return this.tracks[this.name] as Track;
     }
 
@@ -284,8 +426,9 @@ class TrackGroup implements Track {
      * @param name name of the track
      * @param path path to audio source
      * @param source loaded audio source
+     * @returns {Track} the new Track
      */
-    newTrack(name: string, path?: string, source?: AudioSource): Track {
+    public newTrack(name: string, path?: string, source?: AudioSourceNode): Track {
         if (name == this.name) {
             throw new Error(`Cannot use name "${name}" as it is the name of this group track`);
         }
@@ -294,7 +437,7 @@ class TrackGroup implements Track {
         }
         let audioSource = source;
         if (!audioSource) {
-            audioSource = new AudioSource(this.audioContext, this.gainNode);
+            audioSource = new AudioSourceNode(this.audioContext, this.gainNode);
             if (path) {
                 audioSource.load(path);
             }
@@ -307,9 +450,9 @@ class TrackGroup implements Track {
     /**
      * Starts playback of all tracks in this group.
      */
-    start(delay?: number, options?: TrackAdjustmentOptions): Track {
+    public start(delay?: number, options?: AudioAdjustmentOptions, duration?: number): Track {
         for (const track in this.tracks) {
-            this.tracks[track]?.start(delay, options);
+            this.tracks[track]?.start(delay, options, duration);
         }
         return this;
     }
@@ -317,47 +460,51 @@ class TrackGroup implements Track {
     /**
      * Stops playback of all tracks in this group.
      */
-    stop(delay?: number, options?: TrackAdjustmentOptions): Track {
+    public stop(delay?: number, options?: AudioAdjustmentOptions): Track {
         for (const track in this.tracks) {
             this.tracks[track]?.stop(delay, options);
         }
         return this;
     }
 
-    playSource(path: string, options?: TrackAdjustmentOptions): AudioSource {
+    public playSource(path: string, options?: AudioAdjustmentOptions): AudioSourceNode {
         return this.primaryTrack().playSource(path, options);
     }
 
-    loadSource(path: string): AudioSource {
+    public loadSource(path: string): AudioSourceNode {
         return this.primaryTrack().loadSource(path);
+    }
+
+    public swap(options?: TrackSwapOptions | TrackSwapAdvancedOptions): Track {
+        return this.primaryTrack().swap(options);
     }
 
     /**
      * Adjusts the volume output of this group.
      */
-    volume(volume: number, options?: TrackAdjustmentOptions): Track {
+    public volume(volume: number, options?: AudioAdjustmentOptions): Track {
         console.log(`stub volume changed to ${volume} with ${options}`);
         return this;
     }
 
-    loop(enabled: boolean, startSample?: number, endSample?: number): Track {
+    public loop(enabled: boolean, startSample?: number, endSample?: number): Track {
         this.primaryTrack().loop(enabled, startSample, endSample);
         return this;
     }
 
-    jump(enabled: boolean, fromSample?: number, toSample?: number): Track {
+    public jump(enabled: boolean, fromSample?: number, toSample?: number): Track {
         this.primaryTrack().jump(enabled, fromSample, toSample);
         return this;
     }
 
-    createBeat(type: 'repeating' | 'precise' | 'exclude', origin: number, period?: number): TrackBeat {
+    public createBeat(type: TrackBeatType, origin: number, period?: number): TrackBeat {
         return this.primaryTrack().createBeat(type, origin, period);
     }
 
     /**
      * Clears beats across all tracks in the group.
      */
-    clearBeats(): Track {
+    public clearBeats(): Track {
         for (const track in this.tracks) {
             this.tracks[track]?.clearBeats();
         }
@@ -367,7 +514,7 @@ class TrackGroup implements Track {
     /**
      * Synchronizes playback of all tracks in the group.
      */
-    syncPlayTo(track: Track, options?: TrackAdjustmentOptions): Track {
+    public syncPlayTo(track: Track, options?: AudioAdjustmentOptions): Track {
         for (const t in this.tracks) {
             this.tracks[t]?.syncPlayTo(track, options);
         }
@@ -377,14 +524,14 @@ class TrackGroup implements Track {
     /**
      * Synchronizes stopping of all track in the group.
      */
-    syncStopTo(track: Track, options?: TrackAdjustmentOptions): Track {
+    public syncStopTo(track: Track, options?: AudioAdjustmentOptions): Track {
         for (const t in this.tracks) {
             this.tracks[t]?.syncStopTo(track, options);
         }
         return this;
     }
 
-    listenFor(type: TrackEventType, callback: Promise<any>): Track {
+    public listenFor(type: TrackEventType, callback: Promise<any>): Track {
         this.primaryTrack().listenFor(type, callback);
         return this;
     }
