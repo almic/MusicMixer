@@ -1,4 +1,27 @@
 /**
+ * Ramp types for audio adjustments
+ */
+export enum AudioRampType {
+    /**
+     * Linear ramp
+     */
+    LINEAR = 'linear',
+
+    /**
+     * Exponential ramp
+     */
+    EXPONENTIAL = 'exponential',
+
+    /**
+     * Natural ramp. Depending on the adjustment being made, this will either be a
+     * logarithmic adjustment, or an equal-power adjustment. In general, this option
+     * will produce the best sounding results compared to the other options, and in
+     * general should always be preferred over the others.
+     */
+    NATURAL = 'natural',
+}
+
+/**
  * Adjustment options to use when changing volume, panning, etc.
  */
 export type AudioAdjustmentOptions = {
@@ -8,7 +31,7 @@ export type AudioAdjustmentOptions = {
      * 1 is the adjusted state. Going below 0 or above 1 does what you would expect, going beyond
      * the initial and adjusted state respectively.
      */
-    ramp?: 'linear' | 'exponential' | 'natural' | number[];
+    ramp?: AudioRampType | number[];
 
     /**
      * Delay of seconds before applying this adjustment.
