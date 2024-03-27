@@ -50,7 +50,39 @@ export const trackSwapCross: TrackSwapAdvancedOptions = Object.freeze({
 });
 
 /**
- * Behavior when starting playback immediately.
+ * Default behavior for a CUT track audio swap
+ */
+export const trackSwapCut: TrackSwapAdvancedOptions = Object.freeze({
+    oldSource: Object.freeze({
+        ramp: AudioRampType.NATURAL,
+        delay: 0,
+        duration: 1 / 1_000,
+    }),
+    newSource: Object.freeze({
+        ramp: AudioRampType.NATURAL,
+        delay: 0,
+        duration: 1 / 1_000,
+    }),
+});
+
+/**
+ * Default behavior for a track audio swap
+ */
+export const trackSwapDefault: TrackSwapAdvancedOptions = Object.freeze({
+    oldSource: Object.freeze({
+        ramp: AudioRampType.NATURAL,
+        delay: 0,
+        duration: 1.2,
+    }),
+    newSource: Object.freeze({
+        ramp: AudioRampType.NATURAL,
+        delay: 0,
+        duration: 1.2,
+    }),
+});
+
+/**
+ * Default behavior when starting playback
  */
 export const startImmediate: AudioAdjustmentOptions = Object.freeze({
     ramp: AudioRampType.EXPONENTIAL,
@@ -59,7 +91,7 @@ export const startImmediate: AudioAdjustmentOptions = Object.freeze({
 });
 
 /**
- * Behavior when stopping playback immediately.
+ * Default behavior when stopping playback
  */
 export const stopImmediate: AudioAdjustmentOptions = Object.freeze({
     ramp: AudioRampType.EXPONENTIAL,
@@ -101,4 +133,13 @@ export const automationNatural: AudioAdjustmentOptions = Object.freeze({
     ramp: AudioRampType.NATURAL,
     delay: 0,
     duration: 0.23,
+});
+
+/**
+ * Default behavior for AudioParam automations
+ */
+export const automationDefault: AudioAdjustmentOptions = Object.freeze({
+    ramp: AudioRampType.NATURAL,
+    delay: 0,
+    duration: 1 / 711,
 });
