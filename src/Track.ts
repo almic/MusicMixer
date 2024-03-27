@@ -110,7 +110,7 @@ export type TrackSwapOptions = AudioAdjustmentOptions & {
     /**
      * Order of operation when swapping sources
      */
-    swap?: TrackSwapType;
+    swap: TrackSwapType | null;
 
     /**
      * Delay between the end of the old source and the start of the new source.
@@ -126,8 +126,8 @@ export type TrackSwapOptions = AudioAdjustmentOptions & {
  * of these is produced from given {@link TrackSwapOptions} and used for swapping.
  */
 export type TrackSwapAdvancedOptions = {
-    oldSource: AudioAdjustmentOptions;
-    newSource: AudioAdjustmentOptions;
+    oldSource: Required<AudioAdjustmentOptions>;
+    newSource: Required<AudioAdjustmentOptions>;
 };
 
 /**
