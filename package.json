@@ -4,7 +4,7 @@
   "description": "library for mixing sounds and music with the Web Audio API",
   "main": "dist/main.js",
   "engines": {
-    "node": "9.7.1"
+    "node": "21.1.0"
   },
   "scripts": {
     "build": "npm run format && tsc",
@@ -29,8 +29,9 @@
   },
   "homepage": "https://github.com/almic/MusicMixer#readme",
   "devDependencies": {
-    "@types/node": "9.6.0",
+    "@types/node": "21.1.0",
     "@types/semver": "6.2.0",
+    "nwjs-types": "^1.0.0",
     "prettier": "1.19.1",
     "semver": "6.3.1",
     "typescript": "4.1.6"
