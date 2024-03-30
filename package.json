@@ -28,9 +28,9 @@
     },
     "homepage": "https://github.com/almic/MusicMixer#readme",
     "devDependencies": {
-        "@types/node": "21.1.0",
+        "@types/node": "^20.12.2",
+        "@types/nw.js": "^0.13.21",
         "@types/semver": "6.2.0",
-        "nwjs-types": "^1.0.0",
         "onchange": "^7.1.0",
         "prettier": "1.19.1",
         "semver": "6.3.1",
