@@ -1,3 +1,4 @@
-*.json
+*.min.json
+*.min.js
 *.md
 *.html
