@@ -1,0 +1,23 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.insertFinalNewline": true,
+		"files.trimTrailingWhitespace": true,
+		"files.trimFinalNewlines": true,
+		"prettier.arrowParens": "always",
+		"prettier.bracketSpacing": true,
+		"prettier.endOfLine": "crlf",
+		"prettier.printWidth": 110,
+		"prettier.singleQuote": true,
+		"prettier.tabWidth": 4,
+		"prettier.trailingComma": "all",
+		"prettier.useTabs": false,
+		"liveServer.settings.NoBrowser": true,
+		"liveServer.settings.wait": 1000,
+		"liveServer.settings.root": "/docs"
+	}
+}
