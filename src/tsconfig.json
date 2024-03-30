@@ -1,17 +1,25 @@
 {
-  "references": [
-    { "path": "./src/" },
-    { "path": "./test/" }
+  "files": [
+    "AudioSourceNode.ts",
+    "MusicMixer.ts",
+    "Track.ts",
+    "defaults.ts",
   ],
-  "files": [],
   "compilerOptions": {
+    "composite": true,
+
     "target": "ES2017",
+    
+    "module": "CommonJS",
 
     "allowJs": true,
     "checkJs": true,
     "maxNodeModuleJsDepth": 0,
 
-    "noEmit": true,
+    "declaration": true,
+    "inlineSourceMap": true,
+    "outDir": "../dist",
+    "removeComments": true,
 
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,

@@ -1,17 +1,16 @@
 {
-  "references": [
-    { "path": "./src/" },
-    { "path": "./test/" }
-  ],
-  "files": [],
   "compilerOptions": {
+    "composite": true,
+
     "target": "ES2017",
+
+    "module": "ESNext",
 
     "allowJs": true,
     "checkJs": true,
     "maxNodeModuleJsDepth": 0,
 
-    "noEmit": true,
+    "outDir": "./build",
 
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
