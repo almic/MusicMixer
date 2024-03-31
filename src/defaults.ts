@@ -1,5 +1,5 @@
-import { TrackSwapOptions, TrackSwapType, TrackSwapAdvancedOptions } from './Track';
-import { AudioAdjustmentOptions, AudioRampType } from './AudioSourceNode';
+import { TrackSwapOptions, TrackSwapType, TrackSwapAdvancedOptions } from './Track.js';
+import { AudioAdjustmentOptions, AudioRampType } from './AudioSourceNode.js';
 
 function buildOptions(
     trackSwapOptions: TrackSwapOptions | TrackSwapAdvancedOptions,

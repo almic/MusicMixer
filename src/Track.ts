@@ -1,4 +1,4 @@
-import AudioSourceNode, { AudioAdjustmentOptions } from './AudioSourceNode';
+import AudioSourceNode, { AudioAdjustmentOptions } from './AudioSourceNode.js';
 
 /**
  * Type representing a beat of a Track. Contains cancellation logic so third-parties can cancel specific

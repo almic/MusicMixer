@@ -1,7 +1,7 @@
-import AudioSourceNode, { AudioAdjustmentOptions, AudioRampType } from './AudioSourceNode';
-import TrackSingle, { Track, TrackGroup } from './Track';
-import buildOptions from './defaults';
-import * as defaults from './defaults';
+import AudioSourceNode, { AudioAdjustmentOptions, AudioRampType } from './AudioSourceNode.js';
+import TrackSingle, { Track, TrackGroup } from './Track.js';
+import buildOptions from './defaults.js';
+import * as defaults from './defaults.js';
 
 /**
  * MusicMixer

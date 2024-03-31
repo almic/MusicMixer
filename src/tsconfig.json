@@ -3,9 +3,8 @@
     "compilerOptions": {
         "composite": true,
 
-        "target": "ES2017",
-
-        "module": "CommonJS",
+        "target": "ES2022",
+        "module": "ES2022",
 
         "allowJs": true,
         "checkJs": true,
@@ -14,7 +13,7 @@
         "declaration": true,
         "inlineSourceMap": true,
         "outDir": "../dist",
-        "removeComments": true,
+        "removeComments": false,
 
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,

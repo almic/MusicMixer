@@ -2,9 +2,8 @@
     "compilerOptions": {
         "composite": true,
 
-        "target": "ES2017",
-
-        "module": "ESNext",
+        "target": "ES2022",
+        "module": "ES2022",
 
         "allowJs": true,
         "checkJs": true,
