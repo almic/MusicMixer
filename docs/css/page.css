@@ -7,6 +7,10 @@ body {
     min-height: 100%;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 *,
 *:before,
 *:after {

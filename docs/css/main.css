@@ -51,8 +51,33 @@ h3 {
     font-weight: 720;
 }
 
-div.clickable:hover {
+hr {
+    width: 200px;
+    height: 1px;
+    border: none;
+    margin: 1.17rem auto;
+    background: linear-gradient(
+        to right,
+        rgba(0, 255, 255, 0) 0%,
+        rgba(0, 255, 255, 1) 45%,
+        rgba(0, 255, 255, 1) 55%,
+        rgba(0, 255, 255, 0) 100%
+    );
+}
+
+button {
+    padding: 8px;
+    color: inherit;
     cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+    border: 1px solid rgba(0, 255, 255, 0.25);
+    background-color: rgb(24, 48, 48);
+    transition: background-color 200ms ease-out;
+}
+
+button:hover {
+    background-color: rgb(32, 56, 56);
 }
 
 a {
@@ -62,10 +87,51 @@ a {
     border-bottom: 1px solid rgba(95, 204, 255, 0);
 }
 
+div.clickable:hover {
+    cursor: pointer;
+}
+
 a:hover,
 div.clickable:hover a {
     color: #75d3ff;
     border-bottom-color: rgba(117, 211, 255, 1);
+}
+
+div.flex-container {
+    display: flex;
+}
+
+div.flex-main {
+    flex-basis: 90%;
+    /* center back on page */
+    padding-right: 10%;
+}
+
+div.flex-aside {
+    display: flex;
+    flex-basis: 10%;
+    flex-direction: column;
+    /* Stick to page */
+    height: calc(100vh - 10rem - 2px);
+    position: sticky;
+    top: calc(5rem + 1px);
+}
+
+div.flex-center {
+    justify-content: center;
+}
+
+div.flex-controls {
+    width: 80%;
+    margin: 1rem auto;
+}
+
+div.flex-controls > button {
+    font-size: 1.17em;
+
+    flex-grow: 1;
+    width: 100%;
+    margin: 8px;
 }
 
 div.grid-box {
@@ -145,6 +211,53 @@ ul.list-blocks > li {
             rgba(0, 255, 255, 0) 100%
         )
         1;
+}
+
+.collapse-active {
+    border-bottom-color: rgba(0, 255, 255, 0.5);
+    transition: border-bottom-color 100ms ease, background-color 200ms;
+}
+
+.collapse-active::before,
+.collapse-active::after {
+    content: '\02796';
+}
+
+.collapse-button {
+    width: 100%;
+    border: none;
+    display: flex;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-color: rgba(0, 255, 255, 0);
+    /* Change transition time to be slower during collapse, faster when opened */
+    transition: border-bottom-color 500ms ease, background-color 200ms ease-out;
+}
+
+.collapse-button::before,
+.collapse-button::after {
+    content: '\02795';
+    flex: content;
+}
+
+.collapse-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 250ms ease-in-out;
+}
+
+.flex-column-to-bottom {
+    margin-top: auto;
+}
+
+.m-0 {
+    margin: 0;
+}
+
+.source-code-container {
+    width: 60%;
+    margin: 0 20%;
+    border: 1px solid rgba(0, 255, 255, 0.5);
 }
 
 .text-glow {
