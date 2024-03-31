@@ -131,6 +131,7 @@ div.flex-controls > button {
 
     flex-grow: 1;
     width: 100%;
+    height: 4rem;
     margin: 8px;
 }
 
@@ -220,7 +221,7 @@ ul.list-blocks > li {
 
 .collapse-active::before,
 .collapse-active::after {
-    content: '\02796';
+    content: '\02796' !important;
 }
 
 .collapse-button {
