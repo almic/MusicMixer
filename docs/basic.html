@@ -10,7 +10,7 @@
     </style>
     <link rel="stylesheet" href="css/page.css">
     <link rel="stylesheet" href="css/main.css">
-    <script src="js/basic.js"></script>
+    <script src="js/basic.js" type="module"></script>
 
     <script src="js/main.js"></script>
 
@@ -38,10 +38,11 @@
             <hr>
 
             <div class="flex-container flex-center flex-controls">
-                <button type="button">Play Music</button>
-                <button type="button">Stop Music</button>
-                <button type="button">Fade In<br>(Start)</button>
-                <button type="button">Fade Out<br>(Stop)</button>
+                <button type="button" class="load-button glow-bright" onclick="loadMixer();hideButtons(this)">Click to load MusicMixer</button>
+                <button type="button" onclick="playMusic()" hidden>Play Music</button>
+                <button type="button" onclick="stopMusic()" hidden>Stop Music</button>
+                <button type="button" onclick="fadeIn()" hidden>Fade In<br>(Start)</button>
+                <button type="button" onclick="fadeOut()" hidden>Fade Out<br>(Stop)</button>
             </div>
 
             <hr>

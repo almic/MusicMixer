@@ -25,3 +25,14 @@ function collapse(self, toggleText, name) {
         }
     });
 }
+
+/**
+ * Hides the incoming button, then shows all following buttons
+ * under the same parent.
+ */
+function hideButtons(button) {
+    button.setAttribute('hidden', '');
+    while ((button = button.nextElementSibling)) {
+        button.removeAttribute('hidden');
+    }
+}

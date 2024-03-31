@@ -135,6 +135,13 @@ div.flex-controls > button {
     margin: 8px;
 }
 
+div.flex-controls > button.load-button {
+    flex-grow: 0;
+    width: initial;
+    padding-left: 24px;
+    padding-right: 24px;
+}
+
 div.grid-box {
     display: grid;
     gap: 32px;
@@ -249,6 +256,19 @@ ul.list-blocks > li {
 
 .flex-column-to-bottom {
     margin-top: auto;
+}
+
+.glow {
+    box-shadow: 0 0 7px rgba(0, 255, 255, 0.5);
+}
+
+.glow-bright {
+    box-shadow: 0 0 7px rgba(0, 255, 255, 0.8);
+    transition: box-shadow 200ms ease-out;
+}
+
+.glow-bright:hover {
+    box-shadow: 0 0 11px rgba(0, 255, 255, 1);
 }
 
 .m-0 {
