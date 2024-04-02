@@ -93,7 +93,9 @@ class MusicMixer {
     public volume(volume: number, options?: AudioAdjustmentOptions): MusicMixer {
         const currentValue = this.gainNode.gain.value;
         const difference = volume - currentValue;
-        const adjustment = options ? buildOptions(options) : defaults.automationDefault;
+        const adjustment = options
+            ? buildOptions(options, defaults.automationDefault)
+            : defaults.automationDefault;
 
         // Stop automations and immediately ramp.
         if (Math.abs(difference) < Number.EPSILON) {

@@ -1,4 +1,5 @@
 import AudioSourceNode, { AudioAdjustmentOptions } from './AudioSourceNode.js';
+import buildOptions, * as defaults from './defaults.js';
 
 /**
  * Type representing a beat of a Track. Contains cancellation logic so third-parties can cancel specific
@@ -140,9 +141,9 @@ interface Track {
      * Implementation Notes:
      * - When both `delay` and `options.delay` are provided, they are added together.
      * - If this call follows a `loadSource()`, it will call `swap()` using a default OUT_IN swap.
-     *   Use `swap()` directly for more control.
-     * - If the AudioSource attached to this Track is already playing, this will create a copy of
-     *   the AudioSource and start it over with a `swap()` call.
+     *   Merge the passed options with the default swap. Use `swap()` directly for more control.
+     * - If the AudioSource attached to this Track is already playing, clone it as a new loaded source
+     *   and call `swap()`, merging the passed options with the default swap options as above.
      * - Using `duration` is equivalent to calling `start(delay, options)` and then `stop(delay + duration)`
      * @param delay optional delay time
      * @param options adjustment parameters
@@ -284,16 +285,19 @@ interface Track {
  */
 class TrackSingle implements Track {
     private readonly gainNode: GainNode;
+    private loadedSource?: AudioSourceNode;
+    private playingSource?: AudioSourceNode;
+    private isLoadSourceCalled: boolean = false;
 
     constructor(
         private readonly name: string,
         private readonly audioContext: AudioContext,
         readonly destination: AudioNode,
-        private readonly source: AudioSourceNode,
+        readonly source: AudioSourceNode,
     ) {
         this.gainNode = audioContext.createGain();
         this.gainNode.connect(destination);
-        source.connect(this.gainNode);
+        this.loadedSource = source;
     }
 
     public toString(): string {
@@ -301,9 +305,41 @@ class TrackSingle implements Track {
     }
 
     public start(delay?: number, options?: AudioAdjustmentOptions, duration?: number): Track {
-        console.log(
-            `stub start with ${delay} seconds of delay, for ${duration} seconds, with options ${options}`,
-        );
+        // Implicitly load a copy of the same source to call swap
+        if (this.playingSource && !this.loadedSource) {
+            this.loadedSource = this.playingSource.clone();
+            this.isLoadSourceCalled = true;
+        }
+
+        // Swap after loading a source with loadSource()
+        if (this.isLoadSourceCalled && this.loadedSource) {
+            const swapOptions = buildOptions(options, defaults.trackSwapDefault);
+
+            this.swap(swapOptions); // resets isLoadSourceCalled and loadedSource
+
+            if (duration != undefined) {
+                this.stop((delay ?? 0) + (options?.delay ?? 0) + duration);
+            }
+
+            return this;
+        }
+
+        if (this.loadedSource) {
+            this.playingSource = this.loadedSource;
+            this.playingSource.connect(this.gainNode);
+            const startOptions = buildOptions(options, defaults.startImmediate);
+
+            this.playingSource.start(this._time + (delay ?? 0) + startOptions.delay);
+            this.loadedSource = undefined;
+
+            if (duration != undefined) {
+                this.stop((delay ?? 0) + startOptions.delay + duration);
+            }
+
+            return this;
+        }
+
+        console.warn('Track.start() called with no source loaded. This is likely a mistake.');
         return this;
     }
 
@@ -367,6 +403,10 @@ class TrackSingle implements Track {
     public listenFor(type: TrackEventType, callback: Promise<any>): Track {
         console.log(`stub listenFor ${type} calling ${callback}`);
         return this;
+    }
+
+    private get _time(): number {
+        return this.audioContext.currentTime;
     }
 }
 

@@ -97,12 +97,57 @@ class AudioSourceNode implements AudioBufferSourceNode {
         this.sourceNode = audioContext.createBufferSource();
         this.gainNode = audioContext.createGain();
         this.stereoPannerNode = audioContext.createStereoPanner();
+        this.stereoPannerNode.connect(this.gainNode);
 
         this.analyser = audioContext.createAnalyser();
 
         if (destination) {
             this.connect(destination);
         }
+    }
+
+    /**
+     * Creates and returns a clone of this AudioSourceNode, specifically of just the
+     * audio context, buffer, and source path.
+     *
+     * No other internal state, like volume, is copied.
+     * @returns clone
+     */
+    public clone(): AudioSourceNode {
+        const selfClone = new AudioSourceNode(this.audioContext);
+        selfClone.path = this.path;
+        if (this.buffer) {
+            this.copyBufferTo(selfClone);
+        }
+        return selfClone;
+    }
+
+    /**
+     * Copies this buffer into a given AudioSourceNode.
+     * @param other AudioSourceNode to copy into
+     */
+    public copyBufferTo(other: AudioSourceNode): void {
+        if (!this.buffer) {
+            other.buffer = null;
+            return;
+        }
+
+        const bufferChannels = this.buffer.numberOfChannels;
+        const bufferLength = this.buffer.length;
+
+        const bufferClone = new AudioBuffer({
+            length: bufferLength,
+            sampleRate: this.buffer.sampleRate,
+            numberOfChannels: bufferChannels,
+        });
+
+        for (let i = 0; i < bufferChannels; i++) {
+            bufferClone.copyToChannel(this.buffer.getChannelData(i), i);
+        }
+
+        other.sourceNode.buffer = bufferClone;
+        other.bufferHalfLength = Math.floor(bufferLength / 2);
+        other.computeConnections();
     }
 
     public connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
@@ -204,6 +249,11 @@ class AudioSourceNode implements AudioBufferSourceNode {
         return this.sourceNode.buffer;
     }
 
+    set buffer(buffer: AudioBuffer | null) {
+        this.computeBuffer(buffer);
+        this.computeConnections();
+    }
+
     /**
      * Custom implementation of buffer assignment to support reading [playhead position][1] from
      * the source node, which is currently unsupported.
@@ -214,7 +264,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
      * [1]: <https://webaudio.github.io/web-audio-api/#playhead-position> "Playhead Position"
      * [2]: <https://stackoverflow.com/a/3793950/4561008> "First unrepresentable IEEE 754 integer"
      */
-    set buffer(buffer: AudioBuffer | null) {
+    private computeBuffer(buffer: AudioBuffer | null) {
         // Credit to @kurtsmurf for the original implementation, @p-himik for the POC, and @selimachour for the concept
         if (!buffer) {
             this.sourceNode.buffer = null;
@@ -243,33 +293,49 @@ class AudioSourceNode implements AudioBufferSourceNode {
         }
         trackedBuffer.copyToChannel(trackedArray, bufferChannels);
         this.sourceNode.buffer = trackedBuffer;
+    }
 
-        // calling connect() multiple times is part of the standard to support "fan-out"
-        // so, we disconnect all the nodes from everything first to prevent lingering channel connections
+    private computeConnections() {
         this.sourceNode.disconnect();
-        this.analyser.disconnect();
-        this.stereoPannerNode.disconnect();
 
-        // Recreate the splitter and merger so they use the number of channels needed, which could change buffer-to-buffer
         if (this.splitter) {
             this.splitter.disconnect();
-            delete this.splitter;
         }
-        this.splitter = this.audioContext.createChannelSplitter(bufferChannels + 1);
 
         if (this.merger) {
             this.merger.disconnect();
-            delete this.merger;
         }
-        this.merger = this.audioContext.createChannelMerger(bufferChannels);
 
+        const bufferChannels = this.sourceNode.buffer?.numberOfChannels;
+        if (!bufferChannels) {
+            this.splitter = undefined;
+            this.merger = undefined;
+            return;
+        }
+
+        if (!this.splitter || this.splitter.numberOfInputs != bufferChannels) {
+            this.splitter = this.audioContext.createChannelSplitter(bufferChannels);
+        }
         this.sourceNode.connect(this.splitter);
-        for (let i = 0; i < bufferChannels; i++) {
+        this.splitter.connect(this.analyser, bufferChannels - 1, 0);
+
+        // We do not create a merger unless we actually need one
+        const outputChannels = bufferChannels - 1;
+        if (outputChannels < 2) {
+            this.merger = undefined;
+            this.splitter.connect(this.stereoPannerNode, 0, 0);
+            return;
+        }
+
+        if (!this.merger || this.merger.numberOfInputs != outputChannels) {
+            this.merger = this.audioContext.createChannelMerger(outputChannels);
+        }
+
+        for (let i = 0; i < outputChannels; i++) {
             this.splitter.connect(this.merger, i, i);
         }
-        this.splitter.connect(this.analyser, bufferChannels, 0);
 
-        this.merger.connect(this.stereoPannerNode).connect(this.gainNode);
+        this.merger.connect(this.stereoPannerNode);
     }
 
     get detune() {

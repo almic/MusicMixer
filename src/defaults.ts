@@ -1,108 +1,92 @@
-import { TrackSwapOptions, TrackSwapType, TrackSwapAdvancedOptions } from './Track.js';
+import { TrackSwapOptions, TrackSwapAdvancedOptions } from './Track.js';
 import { AudioAdjustmentOptions, AudioRampType } from './AudioSourceNode.js';
 
 function buildOptions(
-    trackSwapOptions: TrackSwapOptions | TrackSwapAdvancedOptions,
+    trackSwapOptions: TrackSwapOptions | TrackSwapAdvancedOptions | undefined | null,
+    defaultSwapOptions: TrackSwapAdvancedOptions,
 ): TrackSwapAdvancedOptions;
-function buildOptions(audioAdjustmentOptions: AudioAdjustmentOptions): Required<AudioAdjustmentOptions>;
 function buildOptions(
-    options: AudioAdjustmentOptions | TrackSwapOptions | TrackSwapAdvancedOptions,
+    audioAdjustmentOptions: AudioAdjustmentOptions | undefined | null,
+    defaultAudioAdjustmentOptions: Required<AudioAdjustmentOptions>,
+): Required<AudioAdjustmentOptions>;
+function buildOptions(
+    audioAdjustmentOptions: AudioAdjustmentOptions | undefined | null,
+    defaultSwapOptions: TrackSwapAdvancedOptions,
+): TrackSwapAdvancedOptions;
+function buildOptions(
+    options: AudioAdjustmentOptions | TrackSwapOptions | TrackSwapAdvancedOptions | undefined | null,
+    defaultOptions: Required<AudioAdjustmentOptions> | TrackSwapAdvancedOptions,
 ): Required<AudioAdjustmentOptions> | TrackSwapAdvancedOptions {
-    if ('ramp' in options) {
-        const fullOptions: any = {};
-        let baseAdjustment = automationDefault;
-        if (Array.isArray(options.ramp)) {
-            fullOptions.ramp = [];
-            for (const val of options.ramp) {
-                fullOptions.ramp.push(val);
-            }
-        } else {
-            switch (options.ramp) {
-                case AudioRampType.EXPONENTIAL: {
-                    baseAdjustment = automationExponential;
-                    break;
-                }
-                case AudioRampType.LINEAR: {
-                    baseAdjustment = automationNatural;
-                    break;
-                }
-                case AudioRampType.NATURAL: {
-                    baseAdjustment = automationLinear;
-                    break;
-                }
-            }
-            fullOptions.ramp = baseAdjustment.ramp;
-        }
-
-        fullOptions.delay = options.delay ?? (baseAdjustment.delay as number);
-        fullOptions.duration = options.duration ?? (baseAdjustment.duration as number);
-
-        if (!('swap' in options)) {
-            return fullOptions;
-        }
-
-        let baseSwap = trackSwapDefault;
-        switch (options.swap) {
-            case TrackSwapType.CROSS: {
-                baseSwap = trackSwapCross;
-                break;
-            }
-            case TrackSwapType.CUT: {
-                baseSwap = trackSwapCut;
-                break;
-            }
-            case TrackSwapType.IN_OUT: {
-                baseSwap = trackSwapInOut;
-                break;
-            }
-            case TrackSwapType.OUT_IN: {
-                baseSwap = trackSwapOutIn;
-                break;
-            }
-        }
-
-        const oldSourceDuration = options.duration ?? (baseSwap.oldSource.duration as number);
-        let newSourceDelay;
-
-        if (
-            options.swapDelay != undefined &&
-            (options.swapDelay > Number.EPSILON || options.swapDelay < -Number.EPSILON)
-        ) {
-            newSourceDelay = options.swapDelay + (options.delay ?? 0) + oldSourceDuration;
-        } else {
-            newSourceDelay = options.delay ?? (baseSwap.newSource.delay as number);
-        }
-
-        const fullSwapOptions: TrackSwapAdvancedOptions = {
-            oldSource: {
-                ramp: fullOptions.ramp,
-                delay: options.delay ?? (baseSwap.oldSource.delay as number),
-                duration: oldSourceDuration,
-            },
-            newSource: {
-                ramp: fullOptions.ramp,
-                delay: newSourceDelay,
-                duration: options.duration ?? (baseSwap.newSource.duration as number),
-            },
-        };
-
-        return fullSwapOptions;
+    if ('swap' in defaultOptions) {
+        console.warn(
+            'A caller passed a defaultOptions object of type TrackSwapOptions. Only TrackSwapAdvancedOptions ' +
+                'are supported for buildOptions(). This is likely a mistake.',
+        );
     }
 
-    const fullSwapOptions: TrackSwapAdvancedOptions = {
-        oldSource: {
-            ramp: options.oldSource.ramp ?? trackSwapDefault.oldSource.ramp,
-            delay: options.oldSource.delay ?? (trackSwapDefault.oldSource.delay as number),
-            duration: options.oldSource.duration ?? (trackSwapDefault.oldSource.duration as number),
-        },
-        newSource: {
-            ramp: options.newSource.ramp ?? trackSwapDefault.newSource.ramp,
-            delay: options.newSource.delay ?? (trackSwapDefault.newSource.delay as number),
-            duration: options.newSource.duration ?? (trackSwapDefault.newSource.duration as number),
-        },
-    };
+    if (!options) {
+        return defaultOptions;
+    }
 
-    return fullSwapOptions;
+    if ('newSource' in options) {
+        if (defaultOptions && !('newSource' in defaultOptions)) {
+            console.warn(
+                'A caller passed some options of type TrackSwapAdvancedOptions to a MusicMixer function that ' +
+                    'only accepts AudioAdjustmentOptions. This is likely a mistake.',
+            );
+            return defaultOptions;
+        }
+        return options;
+    }
+
+    // Doing this here makes logic easier in the next block
+    if ('newSource' in defaultOptions) {
+        const fullOptions = structuredClone(defaultOptions);
+
+        fullOptions.oldSource.ramp = options.ramp;
+        fullOptions.newSource.ramp = options.ramp;
+
+        if (options.duration) {
+            const oldLength = fullOptions.oldSource.delay + fullOptions.oldSource.duration;
+            const newLength = fullOptions.newSource.delay + fullOptions.newSource.duration;
+            const difference = oldLength - newLength;
+            const markiplier =
+                options.duration /
+                (difference > 0 || Math.abs(difference) < Number.EPSILON ? oldLength : newLength);
+            fullOptions.oldSource.delay *= markiplier;
+            fullOptions.oldSource.duration *= markiplier;
+            fullOptions.newSource.delay *= markiplier;
+            fullOptions.newSource.duration *= markiplier;
+        }
+
+        if (options.delay) {
+            fullOptions.oldSource.delay += options.delay;
+            fullOptions.newSource.delay += options.delay;
+        }
+
+        return fullOptions;
+    }
+
+    const fullOptions = structuredClone(defaultOptions);
+
+    fullOptions.ramp = structuredClone(options.ramp);
+
+    if (options.delay) {
+        fullOptions.delay = options.delay;
+    }
+
+    if (options.duration) {
+        fullOptions.duration = options.duration;
+    }
+
+    if ('swap' in options) {
+        console.warn(
+            'A caller passed some options of type TrackSwapOptions to a MusicMixer function that ' +
+                'only accepts AudioAdjustmentOptions. This is likely a mistake.',
+        );
+    }
+
+    return fullOptions;
 }
 
 export default buildOptions;
