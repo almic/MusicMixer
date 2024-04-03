@@ -43,6 +43,13 @@
                 <button type="button" onclick="stopMusic()" hidden>Stop Music</button>
                 <button type="button" onclick="fadeIn()" hidden>Fade In<br>(Start)</button>
                 <button type="button" onclick="fadeOut()" hidden>Fade Out<br>(Stop)</button>
+                <div class="flex-break-row" hidden></div>
+                <div style="flex-basis:35%" hidden>
+                    <div class="flex-container flex-column flex-center center-text">
+                        <span>Volume</span>
+                        <input type="range" min="0" max="1" value="0.5" step="0.01" oninput="changeVolume(this.value)">
+                    </div>
+                </div>
             </div>
 
             <hr>

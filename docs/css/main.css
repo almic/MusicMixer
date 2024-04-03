@@ -99,6 +99,11 @@ div.clickable:hover a {
 
 div.flex-container {
     display: flex;
+    flex-wrap: wrap;
+}
+
+div.flex-column {
+    flex-direction: column;
 }
 
 div.flex-main {
@@ -117,6 +122,12 @@ div.flex-aside {
     top: calc(5rem + 1px);
 }
 
+div.flex-break-row {
+    flex-basis: 100%;
+    height: 0 !important;
+    margin: 0 !important;
+}
+
 div.flex-center {
     justify-content: center;
 }
@@ -130,14 +141,23 @@ div.flex-controls > button {
     font-size: 1.17em;
 
     flex-grow: 1;
-    width: 100%;
+    flex-basis: 20%;
     height: 4rem;
+    margin: 8px;
+}
+
+div.flex-controls div {
+    height: 4rem;
+}
+
+div.flex-controls > div {
+    font-size: 1.17em;
     margin: 8px;
 }
 
 div.flex-controls > button.load-button {
     flex-grow: 0;
-    width: initial;
+    flex-basis: auto;
     padding-left: 24px;
     padding-right: 24px;
 }

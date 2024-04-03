@@ -6,6 +6,7 @@ let musicTrack;
 function loadMixer() {
     mixer = new MusicMixer();
     musicTrack = mixer.newTrack('music', '../audio/03_Cybercity.ogg');
+    mixer.volume(0.5);
 }
 
 /* Button functions */
@@ -26,6 +27,10 @@ function fadeOut() {
     musicTrack.stop(0, { duration: 2 });
 }
 
+function changeVolume(volume) {
+    mixer.volume(volume);
+}
+
 /* Web only; bind functions to global context */
 
 window.loadMixer = loadMixer;
@@ -33,3 +38,4 @@ window.playMusic = playMusic;
 window.stopMusic = stopMusic;
 window.fadeIn = fadeIn;
 window.fadeOut = fadeOut;
+window.changeVolume = changeVolume;
