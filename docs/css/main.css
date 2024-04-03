@@ -223,6 +223,19 @@ div.border-responsive:hover::before {
     background-position-y: 80%;
 }
 
+p.moz-only {
+    display: none;
+}
+
+@-moz-document url-prefix() {
+    p.moz-only {
+        display: block !important;
+        font-size: 1.17rem;
+        font-style: italic;
+        color: rgb(0, 255, 255);
+    }
+}
+
 ul.no-bullets {
     list-style-type: none;
     padding: 0;

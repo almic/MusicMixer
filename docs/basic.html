@@ -35,10 +35,13 @@
             <p class="center-text text-glow">
                 Playing a sound using MusicMixer.js
             </p>
+            <p class="moz-only center-text">
+                Remember: For the best experience, use the latest version of Chrome. Firefox is 7 years late.
+            </p>
             <hr>
 
             <div class="flex-container flex-center flex-controls">
-                <button type="button" class="load-button glow-bright" onclick="loadMixer();hideButtons(this)">Click to load MusicMixer</button>
+                <button type="button" class="load-button glow-bright" onclick="hideButtons(this);loadMixer()">Click to load MusicMixer</button>
                 <button type="button" onclick="playMusic()" hidden>Play Music</button>
                 <button type="button" onclick="stopMusic()" hidden>Stop Music</button>
                 <button type="button" onclick="fadeIn()" hidden>Fade In<br>(Start)</button>
