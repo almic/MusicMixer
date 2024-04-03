@@ -5,7 +5,7 @@ let mixer;
 let musicTrack;
 function loadMixer() {
     mixer = new MusicMixer();
-    musicTrack = mixer.newTrack('music', '../audio/03_Cybercity.ogg');
+    musicTrack = mixer.newTrack('music', 'audio/03_Cybercity.ogg');
     mixer.volume(0.5);
 }
 
