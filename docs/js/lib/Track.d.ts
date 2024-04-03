@@ -122,9 +122,9 @@ interface Track {
      * Implementation Notes:
      * - When both `delay` and `options.delay` are provided, they are added together.
      * - If this call follows a `loadSource()`, it will call `swap()` using a default OUT_IN swap.
-     *   Use `swap()` directly for more control.
-     * - If the AudioSource attached to this Track is already playing, this will create a copy of
-     *   the AudioSource and start it over with a `swap()` call.
+     *   Merge the passed options with the default swap. Use `swap()` directly for more control.
+     * - If the AudioSource attached to this Track is already playing, clone it as a new loaded source
+     *   and call `swap()`, merging the passed options with the default swap options as above.
      * - Using `duration` is equivalent to calling `start(delay, options)` and then `stop(delay + duration)`
      * @param delay optional delay time
      * @param options adjustment parameters
@@ -255,8 +255,11 @@ declare class TrackSingle implements Track {
     private readonly name;
     private readonly audioContext;
     readonly destination: AudioNode;
-    private readonly source;
+    readonly source: AudioSourceNode;
     private readonly gainNode;
+    private loadedSource?;
+    private playingSource?;
+    private isLoadSourceCalled;
     constructor(name: string, audioContext: AudioContext, destination: AudioNode, source: AudioSourceNode);
     toString(): string;
     start(delay?: number, options?: AudioAdjustmentOptions, duration?: number): Track;
@@ -272,6 +275,7 @@ declare class TrackSingle implements Track {
     syncPlayTo(track: Track, options?: AudioAdjustmentOptions): Track;
     syncStopTo(track: Track, options?: AudioAdjustmentOptions): Track;
     listenFor(type: TrackEventType, callback: Promise<any>): Track;
+    private get _time();
 }
 /**
  * TrackGroup. All TrackGroups are constructed with a primary Track that shares the same name as the group,

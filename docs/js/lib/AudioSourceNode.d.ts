@@ -84,6 +84,19 @@ declare class AudioSourceNode implements AudioBufferSourceNode {
     readonly numberOfInputs: number;
     readonly numberOfOutputs: number;
     constructor(audioContext: AudioContext, destination?: AudioNode | undefined);
+    /**
+     * Creates and returns a clone of this AudioSourceNode, specifically of just the
+     * audio context, buffer, and source path.
+     *
+     * No other internal state, like volume, is copied.
+     * @returns clone
+     */
+    clone(): AudioSourceNode;
+    /**
+     * Copies this buffer into a given AudioSourceNode.
+     * @param other AudioSourceNode to copy into
+     */
+    copyBufferTo(other: AudioSourceNode): void;
     connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
     connect(destination: AudioParam, outputIndex?: number): void;
     disconnect(): void;
@@ -110,6 +123,7 @@ declare class AudioSourceNode implements AudioBufferSourceNode {
     get onended(): ((this: AudioScheduledSourceNode, ev: Event) => any) | null;
     set onended(callback: ((this: AudioScheduledSourceNode, ev: Event) => any) | null);
     get buffer(): AudioBuffer | null;
+    set buffer(buffer: AudioBuffer | null);
     /**
      * Custom implementation of buffer assignment to support reading [playhead position][1] from
      * the source node, which is currently unsupported.
@@ -120,7 +134,8 @@ declare class AudioSourceNode implements AudioBufferSourceNode {
      * [1]: <https://webaudio.github.io/web-audio-api/#playhead-position> "Playhead Position"
      * [2]: <https://stackoverflow.com/a/3793950/4561008> "First unrepresentable IEEE 754 integer"
      */
-    set buffer(buffer: AudioBuffer | null);
+    private computeBuffer;
+    private computeConnections;
     get detune(): AudioParam;
     get loop(): boolean;
     set loop(value: boolean);

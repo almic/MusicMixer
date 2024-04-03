@@ -1,7 +1,8 @@
 import { TrackSwapOptions, TrackSwapAdvancedOptions } from './Track.js';
 import { AudioAdjustmentOptions } from './AudioSourceNode.js';
-declare function buildOptions(trackSwapOptions: TrackSwapOptions | TrackSwapAdvancedOptions): TrackSwapAdvancedOptions;
-declare function buildOptions(audioAdjustmentOptions: AudioAdjustmentOptions): Required<AudioAdjustmentOptions>;
+declare function buildOptions(trackSwapOptions: TrackSwapOptions | TrackSwapAdvancedOptions | undefined | null, defaultSwapOptions: TrackSwapAdvancedOptions): TrackSwapAdvancedOptions;
+declare function buildOptions(audioAdjustmentOptions: AudioAdjustmentOptions | undefined | null, defaultAudioAdjustmentOptions: Required<AudioAdjustmentOptions>): Required<AudioAdjustmentOptions>;
+declare function buildOptions(audioAdjustmentOptions: AudioAdjustmentOptions | undefined | null, defaultSwapOptions: TrackSwapAdvancedOptions): TrackSwapAdvancedOptions;
 export default buildOptions;
 /**
  * Default behavior for an IN_OUT track audio swap
