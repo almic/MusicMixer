@@ -121,7 +121,7 @@ interface Track {
      * Begin playback on the track, starting the loaded AudioSource.
      *
      * Implementation Notes:
-     * - When both `delay` and `options.delay` are provided, they are added together.
+     * - If `options.delay` is provided, it will be used over `delay`.
      * - If this call follows a `loadSource()`, it will call `swap()` using a default OUT_IN swap.
      *   Merge the passed options with the default swap. Use `swap()` directly for more control.
      * - If the AudioSource attached to this Track is already playing, clone it as a new loaded source
@@ -137,7 +137,7 @@ interface Track {
      * Stop playback on the track, pausing the currently playing AudioSource.
      *
      * Implementation Notes:
-     * - When both `delay` and `options.delay` are provided, they are added together.
+     * - If `options.delay` is provided, it will be used over `delay`.
      * - Does nothing if there is no playing AudioSource.
      * - Saves the playhead position of the AudioSource at the time this method is called,
      *   so that a future `start()` call will resume from the saved position.

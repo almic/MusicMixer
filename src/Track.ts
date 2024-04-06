@@ -1,5 +1,5 @@
 import AudioSourceNode from './AudioSourceNode.js';
-import { AudioAdjustmentOptions } from './automation.js';
+import automation, { AudioAdjustmentOptions } from './automation.js';
 import buildOptions, * as defaults from './defaults.js';
 
 /**
@@ -140,7 +140,7 @@ interface Track {
      * Begin playback on the track, starting the loaded AudioSource.
      *
      * Implementation Notes:
-     * - When both `delay` and `options.delay` are provided, they are added together.
+     * - If `options.delay` is provided, it will be used over `delay`.
      * - If this call follows a `loadSource()`, it will call `swap()` using a default OUT_IN swap.
      *   Merge the passed options with the default swap. Use `swap()` directly for more control.
      * - If the AudioSource attached to this Track is already playing, clone it as a new loaded source
@@ -157,7 +157,7 @@ interface Track {
      * Stop playback on the track, pausing the currently playing AudioSource.
      *
      * Implementation Notes:
-     * - When both `delay` and `options.delay` are provided, they are added together.
+     * - If `options.delay` is provided, it will be used over `delay`.
      * - Does nothing if there is no playing AudioSource.
      * - Saves the playhead position of the AudioSource at the time this method is called,
      *   so that a future `start()` call will resume from the saved position.
@@ -319,7 +319,7 @@ class TrackSingle implements Track {
             this.swap(swapOptions); // resets isLoadSourceCalled and loadedSource
 
             if (duration != undefined) {
-                this.stop((delay ?? 0) + (options?.delay ?? 0) + duration);
+                this.stop((options?.delay ?? delay ?? 0) + duration);
             }
 
             return this;
@@ -329,12 +329,18 @@ class TrackSingle implements Track {
             this.playingSource = this.loadedSource;
             this.playingSource.connect(this.gainNode);
             const startOptions = buildOptions(options, defaults.startImmediate);
+            if (delay != undefined && options?.delay == undefined) {
+                startOptions.delay += delay;
+            }
 
-            this.playingSource.start(this._time + (delay ?? 0) + startOptions.delay);
+            const currentGain = this.gainNode.gain.value;
+            this.gainNode.gain.value = 0;
+            this.playingSource.start(this._time + startOptions.delay);
             this.loadedSource = undefined;
+            automation(this.audioContext, this.gainNode.gain, currentGain, startOptions);
 
             if (duration != undefined) {
-                this.stop((delay ?? 0) + startOptions.delay + duration);
+                this.stop(startOptions.delay + duration);
             }
 
             return this;
