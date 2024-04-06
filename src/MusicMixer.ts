@@ -1,5 +1,6 @@
-import AudioSourceNode, { AudioAdjustmentOptions, AudioRampType } from './AudioSourceNode.js';
+import AudioSourceNode from './AudioSourceNode.js';
 import TrackSingle, { Track, TrackGroup } from './Track.js';
+import automation, { AudioAdjustmentOptions } from './automation.js';
 import buildOptions from './defaults.js';
 import * as defaults from './defaults.js';
 
@@ -91,71 +92,11 @@ class MusicMixer {
      * @returns {MusicMixer} this MusicMixer
      */
     public volume(volume: number, options?: AudioAdjustmentOptions): MusicMixer {
-        const currentValue = this.gainNode.gain.value;
-        const difference = volume - currentValue;
         const adjustment = options
             ? buildOptions(options, defaults.automationDefault)
             : defaults.automationDefault;
 
-        // Stop automations and immediately ramp.
-        if (Math.abs(difference) < Number.EPSILON) {
-            this.gainNode.gain.cancelAndHoldAtTime(this.currentTime);
-            this.gainNode.gain.setValueAtTime(currentValue, this.currentTime);
-            this.gainNode.gain.linearRampToValueAtTime(volume, adjustment.delay + this.currentTime);
-            return this;
-        }
-
-        this.gainNode.gain.cancelAndHoldAtTime(adjustment.delay + this.currentTime);
-        this.gainNode.gain.setValueAtTime(currentValue, adjustment.delay + this.currentTime);
-        if (Array.isArray(adjustment.ramp)) {
-            const valueCurve = [];
-            for (const markiplier of adjustment.ramp) {
-                valueCurve.push(currentValue + difference * markiplier);
-            }
-            this.gainNode.gain.setValueCurveAtTime(
-                valueCurve,
-                adjustment.delay + this.currentTime,
-                adjustment.duration,
-            );
-            return this;
-        }
-
-        switch (adjustment.ramp) {
-            case AudioRampType.EXPONENTIAL: {
-                this.gainNode.gain.exponentialRampToValueAtTime(
-                    volume,
-                    adjustment.delay + adjustment.duration + this.currentTime,
-                );
-                break;
-            }
-            case AudioRampType.LINEAR: {
-                this.gainNode.gain.linearRampToValueAtTime(
-                    volume,
-                    adjustment.delay + adjustment.duration + this.currentTime,
-                );
-                break;
-            }
-            case AudioRampType.NATURAL: {
-                // Logarithmic approach to value, it is 95% the way there after 3 timeConstant, so we linearly ramp at that point
-                const timeConstant = adjustment.duration / 4;
-                this.gainNode.gain.setTargetAtTime(volume, adjustment.delay + this.currentTime, timeConstant);
-                this.gainNode.gain.cancelAndHoldAtTime(
-                    adjustment.delay + timeConstant * 3 + this.currentTime,
-                );
-                // The following event is implicitly added, per WebAudio spec.
-                // https://webaudio.github.io/web-audio-api/#dom-audioparam-cancelandholdattime
-                // this.gainNode.gain.setValueAtTime(currentValue + (difference * (1 - Math.pow(Math.E, -3))), timeConstant * 3 + this.currentTime);
-                this.gainNode.gain.linearRampToValueAtTime(
-                    volume,
-                    adjustment.delay + adjustment.duration + this.currentTime,
-                );
-                break;
-            }
-            default: {
-                this.gainNode.gain.setValueAtTime(volume, adjustment.delay);
-                break;
-            }
-        }
+        automation(this.audioContext, this.gainNode.gain, volume, adjustment);
 
         return this;
     }

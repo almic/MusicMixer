@@ -1,5 +1,5 @@
 {
-    "files": ["AudioSourceNode.ts", "MusicMixer.ts", "Track.ts", "defaults.ts"],
+    "files": ["AudioSourceNode.ts", "MusicMixer.ts", "Track.ts", "automation.ts", "defaults.ts"],
     "compilerOptions": {
         "composite": true,
 

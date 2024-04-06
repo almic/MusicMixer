@@ -1,5 +1,5 @@
 import { TrackSwapOptions, TrackSwapAdvancedOptions } from './Track.js';
-import { AudioAdjustmentOptions } from './AudioSourceNode.js';
+import { AudioAdjustmentOptions } from './automation.js';
 declare function buildOptions(trackSwapOptions: TrackSwapOptions | TrackSwapAdvancedOptions | undefined | null, defaultSwapOptions: TrackSwapAdvancedOptions): TrackSwapAdvancedOptions;
 declare function buildOptions(audioAdjustmentOptions: AudioAdjustmentOptions | undefined | null, defaultAudioAdjustmentOptions: Required<AudioAdjustmentOptions>): Required<AudioAdjustmentOptions>;
 declare function buildOptions(audioAdjustmentOptions: AudioAdjustmentOptions | undefined | null, defaultSwapOptions: TrackSwapAdvancedOptions): TrackSwapAdvancedOptions;

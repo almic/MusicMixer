@@ -1,4 +1,5 @@
-import AudioSourceNode, { AudioAdjustmentOptions } from './AudioSourceNode.js';
+import AudioSourceNode from './AudioSourceNode.js';
+import { AudioAdjustmentOptions } from './automation.js';
 import buildOptions, * as defaults from './defaults.js';
 
 /**

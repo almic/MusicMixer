@@ -1,5 +1,6 @@
-import AudioSourceNode, { AudioAdjustmentOptions } from './AudioSourceNode.js';
+import AudioSourceNode from './AudioSourceNode.js';
 import { Track, TrackGroup } from './Track.js';
+import { AudioAdjustmentOptions } from './automation.js';
 /**
  * MusicMixer
  */

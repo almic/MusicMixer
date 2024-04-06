@@ -1,4 +1,5 @@
-import AudioSourceNode, { AudioAdjustmentOptions } from './AudioSourceNode.js';
+import AudioSourceNode from './AudioSourceNode.js';
+import { AudioAdjustmentOptions } from './automation.js';
 /**
  * Type representing a beat of a Track. Contains cancellation logic so third-parties can cancel specific
  * beat rules on a given Track. Also used for passing beat events to callbacks.
