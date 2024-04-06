@@ -196,6 +196,9 @@ interface Track {
      * Implementation Notes:
      * - After this method returns, all methods that modify the AudioSource of this Track will
      *   modify the new source that has been swapped in.
+     * - After this method returns, the internal state of the Track will be restored as if the
+     *   Track has been reconstructed with the previously loaded AudioSourceNode, and then start()
+     *   was called.
      * @param options swap parameters
      * @returns {Track} this Track
      */
@@ -288,8 +291,25 @@ class TrackSingle implements Track {
     private readonly gainNode: GainNode;
     private loadedSource?: AudioSourceNode;
     private playingSource?: AudioSourceNode;
+
+    /**
+     * Tracks whether or not the loadSource() method has previously been called,
+     * used by start() to determine if a swap() or plain start() will occur.
+     */
     private isLoadSourceCalled: boolean = false;
 
+    /**
+     * Implementation Notes:
+     * - If the given AudioSourceNode has outgoing connections, they will be disconnected at the
+     *   time this Track begins playback of the AudioSourceNode.
+     * - Providing an AudioSourceNode that is controlled by another Track has undefined behavior.
+     *   If you must reuse an AudioSourceNode that may be controlled by another Track, use the
+     *   clone() method to obtain a new node.
+     * @param name
+     * @param audioContext
+     * @param destination
+     * @param source
+     */
     constructor(
         private readonly name: string,
         private readonly audioContext: AudioContext,
@@ -316,7 +336,7 @@ class TrackSingle implements Track {
         if (this.isLoadSourceCalled && this.loadedSource) {
             const swapOptions = buildOptions(options, defaults.trackSwapDefault);
 
-            this.swap(swapOptions); // resets isLoadSourceCalled and loadedSource
+            this.swap(swapOptions);
 
             if (duration != undefined) {
                 this.stop((options?.delay ?? delay ?? 0) + duration);
@@ -326,8 +346,11 @@ class TrackSingle implements Track {
         }
 
         if (this.loadedSource) {
+            this.loadedSource.disconnect();
             this.playingSource = this.loadedSource;
             this.playingSource.connect(this.gainNode);
+            this.loadedSource = undefined;
+
             const startOptions = buildOptions(options, defaults.startImmediate);
             if (delay != undefined && options?.delay == undefined) {
                 startOptions.delay += delay;
@@ -336,7 +359,6 @@ class TrackSingle implements Track {
             const currentGain = this.gainNode.gain.value;
             this.gainNode.gain.value = 0;
             this.playingSource.start(this._time + startOptions.delay);
-            this.loadedSource = undefined;
             automation(this.audioContext, this.gainNode.gain, currentGain, startOptions);
 
             if (duration != undefined) {
