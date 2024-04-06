@@ -101,9 +101,9 @@ class AudioSourceNode implements AudioBufferSourceNode {
             bufferClone.copyToChannel(this.buffer.getChannelData(i), i);
         }
 
+        other.computeConnections(bufferChannels);
+        other.bufferHalfLength = AudioSourceNode.computeBufferHalfLength(bufferClone);
         other.sourceNode.buffer = bufferClone;
-        other.bufferHalfLength = Math.floor(bufferLength / 2);
-        other.computeConnections();
     }
 
     public connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
@@ -206,13 +206,30 @@ class AudioSourceNode implements AudioBufferSourceNode {
     }
 
     set buffer(buffer: AudioBuffer | null) {
-        this.computeBuffer(buffer);
-        this.computeConnections();
+        const computedBuffer = AudioSourceNode.computeBufferWithPositionChannel(buffer);
+        this.computeConnections(computedBuffer?.numberOfChannels ?? 0);
+        this.bufferHalfLength = AudioSourceNode.computeBufferHalfLength(computedBuffer);
+        this.sourceNode.buffer = computedBuffer;
     }
 
     /**
-     * Custom implementation of buffer assignment to support reading [playhead position][1] from
-     * the source node, which is currently unsupported.
+     * Static definition for how to compute the half-length of a buffer.
+     *
+     * Why? Because it's computed twice and I want to be certain that it is always the same.
+     *
+     * Why is this computed twice? To avoid a race condition caused by loading a buffer and then
+     * building the node graph.
+     *
+     * Why do we do it in that order? You ask a lot of questions! Go look at the code!
+     * @param buffer the buffer to compute half-length for
+     */
+    private static computeBufferHalfLength(buffer: AudioBuffer | null): number {
+        return Math.floor((buffer?.length ?? 0) / 2);
+    }
+
+    /**
+     * Custom buffer computation to support reading [playhead position][1] from the source node,
+     * which is currently unsupported by Web Audio API (but maybe someday it'll be exposed).
      *
      * See [first unrepresentable IEEE 754 integer][2] for the reasoning behind using a
      * pigeon hole type implementation.
@@ -220,12 +237,10 @@ class AudioSourceNode implements AudioBufferSourceNode {
      * [1]: <https://webaudio.github.io/web-audio-api/#playhead-position> "Playhead Position"
      * [2]: <https://stackoverflow.com/a/3793950/4561008> "First unrepresentable IEEE 754 integer"
      */
-    private computeBuffer(buffer: AudioBuffer | null) {
+    private static computeBufferWithPositionChannel(buffer: AudioBuffer | null): AudioBuffer | null {
         // Credit to @kurtsmurf for the original implementation, @p-himik for the POC, and @selimachour for the concept
         if (!buffer) {
-            this.sourceNode.buffer = null;
-            this.bufferHalfLength = null;
-            return;
+            return null;
         }
 
         const bufferLength = buffer.length;
@@ -242,16 +257,22 @@ class AudioSourceNode implements AudioBufferSourceNode {
 
         // Credit to @westarne for this improvement
         const trackedArray = new Float32Array(bufferLength);
-        const halfBufferLength = Math.floor(bufferLength / 2);
-        this.bufferHalfLength = halfBufferLength;
+        const halfBufferLength = AudioSourceNode.computeBufferHalfLength(trackedBuffer);
         for (let i = 0; i < bufferLength; i++) {
             trackedArray[i] = i - halfBufferLength;
         }
         trackedBuffer.copyToChannel(trackedArray, bufferChannels);
-        this.sourceNode.buffer = trackedBuffer;
+        return trackedBuffer;
     }
 
-    private computeConnections() {
+    /**
+     * Constructs the internal audio graph for this AudioSourceNode based on the number of channels
+     * provided. The splitter will construct with `bufferChannels` channel outputs, where the last
+     * channel is presumed to be the position channel. The merge node, if required, will construct
+     * with `bufferChannels - 1` channel inputs, so that the position channel is not output
+     * @param bufferChannels number of channels to initialize
+     */
+    private computeConnections(bufferChannels: number) {
         this.sourceNode.disconnect();
 
         if (this.splitter) {
@@ -262,7 +283,6 @@ class AudioSourceNode implements AudioBufferSourceNode {
             this.merger.disconnect();
         }
 
-        const bufferChannels = this.sourceNode.buffer?.numberOfChannels;
         if (!bufferChannels) {
             this.splitter = undefined;
             this.merger = undefined;
