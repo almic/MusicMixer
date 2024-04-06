@@ -122,9 +122,34 @@ class AudioSourceNode implements AudioBufferSourceNode {
         return this.gainNode.connect(destination, outputIndex);
     }
 
-    public disconnect() {
+    public disconnect(): void;
+    public disconnect(output: number): void;
+    public disconnect(destinationNode: AudioNode): void;
+    public disconnect(destinationNode: AudioNode, output: number): void;
+    public disconnect(destinationNode: AudioNode, output: number, input: number): void;
+    public disconnect(destinationParam: AudioParam): void;
+    public disconnect(destinationParam: AudioParam, output: number): void;
+    public disconnect(param1?: number | AudioNode | AudioParam, output?: number, input?: number) {
         // Only diconnect the final gain node, the other nodes will all stay connected
-        this.gainNode.disconnect();
+        if (param1 == undefined) {
+            return this.gainNode.disconnect();
+        }
+        if (typeof param1 == 'number') {
+            return this.gainNode.disconnect(param1);
+        }
+        if (param1 instanceof AudioParam) {
+            if (output != undefined) {
+                return this.gainNode.disconnect(param1, output);
+            }
+            return this.gainNode.disconnect(param1);
+        }
+        if (output != undefined && input != undefined) {
+            return this.gainNode.disconnect(param1, output, input);
+        }
+        if (output != undefined) {
+            return this.gainNode.disconnect(param1, output);
+        }
+        this.gainNode.disconnect(param1);
     }
 
     async load(path: string): Promise<void> {
