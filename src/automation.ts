@@ -46,26 +46,38 @@ export type AudioAdjustmentOptions = {
 
 /**
  * Automation function for AudioParam
+ *
+ * Set `skipImmediate` to `true` if you want the automation to play out in its entirety, even if
+ * the current value of the audioParam is at `value`. By default, the automation will cancel active
+ * automations, so in many cases playing the full duration of the automation is not needed.
+ *
+ * @param audioContext the audioContext from which to use as the time system
+ * @param audioParam the audioParam to automate
+ * @param value the value to automate towards
+ * @param options the method of automation
+ * @param skipImmediate if true, dont short the automation if the current value is already at the
+ *                      given value, allow the automation to play out.
  */
 export default function automation(
     audioContext: AudioContext,
     audioParam: AudioParam,
     value: number,
     options: Required<AudioAdjustmentOptions>,
+    skipImmediate: boolean = false,
 ): void {
     const currentValue = audioParam.value;
     const difference = value - currentValue;
 
     // Stop automations and immediately ramp.
-    if (Math.abs(difference) < Number.EPSILON) {
-        audioParam.cancelAndHoldAtTime(audioContext.currentTime);
+    if (!skipImmediate && Math.abs(difference) < Number.EPSILON) {
         audioParam.setValueAtTime(currentValue, audioContext.currentTime);
+        audioParam.cancelAndHoldAtTime(audioContext.currentTime);
         audioParam.linearRampToValueAtTime(value, options.delay + audioContext.currentTime);
         return;
     }
 
-    audioParam.cancelAndHoldAtTime(options.delay + audioContext.currentTime);
     audioParam.setValueAtTime(currentValue, options.delay + audioContext.currentTime);
+    audioParam.cancelAndHoldAtTime(options.delay + audioContext.currentTime);
     if (Array.isArray(options.ramp)) {
         const valueCurve = [];
         for (const markiplier of options.ramp) {
@@ -77,6 +89,29 @@ export default function automation(
             options.duration,
         );
         return;
+    }
+
+    /**
+     * It is necessary to explain the function of exponential ramping:
+     *
+     * - Ramping from zero to any value is the same as using setValueAtTime()
+     * - Ramping from any value to zero is undefined
+     * - Ramping to values near zero have an instantaneous effect
+     *
+     * The only way to "exponentially" ramp to or away from zero is to use
+     * natural ramping; `setTargetAtTime()`. Therefore, an exponential ramp is
+     * converted to a natural ramp when the start or end is near zero.
+     *
+     * This conversion is done with the goal of being intuitive, as it may not
+     * be well understood that normal exponential ramping has these limitations.
+     */
+
+    if (
+        options.ramp == AudioRampType.EXPONENTIAL &&
+        (Math.abs(currentValue) < Number.EPSILON || Math.abs(value) < Number.EPSILON)
+    ) {
+        options = structuredClone(options);
+        options.ramp = AudioRampType.NATURAL;
     }
 
     switch (options.ramp) {
@@ -96,12 +131,19 @@ export default function automation(
         }
         case AudioRampType.NATURAL: {
             // Logarithmic approach to value, it is 95% the way there after 3 timeConstant, so we linearly ramp at that point
-            const timeConstant = options.duration / 4;
+            const timeSteps = 4;
+            const timeConstant = options.duration / timeSteps;
             audioParam.setTargetAtTime(value, options.delay + audioContext.currentTime, timeConstant);
-            audioParam.cancelAndHoldAtTime(options.delay + timeConstant * 3 + audioContext.currentTime);
-            // The following event is implicitly added, per WebAudio spec.
+            audioParam.cancelAndHoldAtTime(
+                timeConstant * (timeSteps - 1) + options.delay + audioContext.currentTime,
+            );
+            // ThE fOlLoWiNg EvEnT iS iMpLiCiTlY aDdEd, PeR wEbAuDiO SpEc.
             // https://webaudio.github.io/web-audio-api/#dom-audioparam-cancelandholdattime
-            // this.gainNode.gain.setValueAtTime(currentValue + (difference * (1 - Math.pow(Math.E, -3))), timeConstant * 3 + this.currentTime);
+            // https://www.youtube.com/watch?v=EzWNBmjyv7Y
+            audioParam.setValueAtTime(
+                currentValue + difference * (1 - Math.pow(Math.E, -(timeSteps - 1))),
+                timeConstant * (timeSteps - 1) + audioContext.currentTime,
+            );
             audioParam.linearRampToValueAtTime(
                 value,
                 options.delay + options.duration + audioContext.currentTime,
@@ -109,7 +151,8 @@ export default function automation(
             break;
         }
         default: {
-            audioParam.setValueAtTime(value, options.delay);
+            console.warn(`Automation function received unknown ramp type ${options.ramp}`);
+            audioParam.setValueAtTime(value, options.delay + audioContext.currentTime);
             break;
         }
     }

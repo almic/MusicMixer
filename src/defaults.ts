@@ -69,7 +69,10 @@ function buildOptions(
 
     const fullOptions = structuredClone(defaultOptions);
 
-    fullOptions.ramp = structuredClone(options.ramp);
+    // while required in typescript, javascript will let this be undefined
+    if (options.ramp) {
+        fullOptions.ramp = structuredClone(options.ramp);
+    }
 
     if (options.delay) {
         fullOptions.delay = options.delay;
