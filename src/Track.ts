@@ -285,6 +285,7 @@ interface Track {
     listenFor(type: TrackEventType, callback: Promise<any>): Track;
 }
 
+//#region TrackSingle
 /**
  * Track implementation
  */
@@ -511,7 +512,9 @@ class TrackSingle implements Track {
         return this.audioContext.currentTime;
     }
 }
+// #endregion TrackSingle
 
+// #region TrackGroup
 /**
  * TrackGroup. All TrackGroups are constructed with a primary Track that shares the same name as the group,
  * to which most methods will operate as a transparent call onto the primary Track. Unless otherwise stated
@@ -678,6 +681,7 @@ class TrackGroup implements Track {
         return this;
     }
 }
+// #endregion TrackGroup
 
 export default TrackSingle;
 export { Track, TrackGroup };
