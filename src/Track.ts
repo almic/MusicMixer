@@ -159,6 +159,7 @@ interface Track {
      * Implementation Notes:
      * - If `options.delay` is provided, it will be used over `delay`.
      * - Does nothing if there is no playing AudioSource.
+     * - For consecutive calls, the earliest time from consecuitive calls will be used.
      * - Saves the playhead position of the AudioSource at the time this method is called,
      *   so that a future `start()` call will resume from the saved position.
      * @param delay optional delay time
@@ -288,9 +289,43 @@ interface Track {
  * Track implementation
  */
 class TrackSingle implements Track {
+    /**
+     * The master gain for the track, it is exposed for automation
+     */
     private readonly gainNode: GainNode;
+
+    /**
+     * Internal gain node for fading in/ out the primary source, for stopping and starting
+     */
+    private readonly gainPrimaryNode: GainNode;
+
+    /**
+     * Internal gain node for fading in the secondary source, swapping primary sources
+     */
+    private readonly gainSecondaryNode: GainNode;
+
+    /**
+     * Tracks the most recently loaded source, used in swaping/ starting
+     */
     private loadedSource?: AudioSourceNode;
+
+    /**
+     * Tracks the playing source, on which automations and stopping effect
+     */
     private playingSource?: AudioSourceNode;
+
+    /**
+     * Stores a position, in seconds, on which stop() will save the playhead
+     * position at the moment of activation, on which play() will resume from
+     */
+    private resumeMarker: number = 0;
+
+    /**
+     * Stores the earliest scheduled stop time, used to disable the ability to call
+     * stop continuously with future times such that the underlying AudioSourceNode
+     * never reaches a stop time.
+     */
+    private nextStopTime: number = 0;
 
     /**
      * Tracks whether or not the loadSource() method has previously been called,
@@ -319,6 +354,11 @@ class TrackSingle implements Track {
         this.gainNode = audioContext.createGain();
         this.gainNode.connect(destination);
         this.loadedSource = source;
+
+        this.gainPrimaryNode = audioContext.createGain();
+        this.gainSecondaryNode = audioContext.createGain();
+        this.gainPrimaryNode.connect(this.gainNode);
+        this.gainSecondaryNode.connect(this.gainNode);
     }
 
     public toString(): string {
@@ -327,13 +367,13 @@ class TrackSingle implements Track {
 
     public start(delay?: number, options?: AudioAdjustmentOptions, duration?: number): Track {
         // Implicitly load a copy of the same source to call swap
-        if (this.playingSource && !this.loadedSource) {
+        if (this.playingSource?.isActive && !this.loadedSource) {
             this.loadedSource = this.playingSource.clone();
             this.isLoadSourceCalled = true;
         }
 
         // Swap after loading a source with loadSource()
-        if (this.isLoadSourceCalled && this.loadedSource) {
+        if (this.playingSource?.isActive && this.isLoadSourceCalled && this.loadedSource) {
             const swapOptions = buildOptions(options, defaults.trackSwapDefault);
 
             this.swap(swapOptions);
@@ -345,35 +385,67 @@ class TrackSingle implements Track {
             return this;
         }
 
+        const startOptions = buildOptions(options, defaults.startImmediate);
+        if (delay != undefined && options?.delay == undefined) {
+            startOptions.delay += delay;
+        }
+
+        // Move the loaded source into the playing source
         if (this.loadedSource) {
-            this.loadedSource.disconnect();
+            this.loadedSource.disconnect(); // claim the loadedSource
+            if (this.playingSource) {
+                const fadeOut = structuredClone(defaults.automationNatural);
+                this.playingSource.volume(0, fadeOut);
+                this.playingSource.stop(this._time + fadeOut.delay + fadeOut.duration);
+                setTimeout(this.playingSource.destroy, fadeOut.delay + fadeOut.duration);
+            }
             this.playingSource = this.loadedSource;
-            this.playingSource.connect(this.gainNode);
+            this.gainPrimaryNode.gain.value = 0;
+            this.playingSource.connect(this.gainPrimaryNode);
             this.loadedSource = undefined;
+        }
 
-            const startOptions = buildOptions(options, defaults.startImmediate);
-            if (delay != undefined && options?.delay == undefined) {
-                startOptions.delay += delay;
-            }
-
-            const currentGain = this.gainNode.gain.value;
-            this.gainNode.gain.value = 0;
-            this.playingSource.start(this._time + startOptions.delay);
-            automation(this.audioContext, this.gainNode.gain, currentGain, startOptions);
-
-            if (duration != undefined) {
-                this.stop(startOptions.delay + duration);
-            }
-
+        if (!this.playingSource) {
+            console.warn('Track.start() called with no source loaded. This is likely a mistake.');
             return this;
         }
 
-        console.warn('Track.start() called with no source loaded. This is likely a mistake.');
+        this.playingSource.start(this._time + startOptions.delay, this.resumeMarker);
+        automation(this.audioContext, this.gainPrimaryNode.gain, 1, startOptions, true);
+
+        this.nextStopTime = 0;
+        this.resumeMarker = 0;
+
+        if (duration != undefined) {
+            this.stop(startOptions.delay + duration);
+        }
+
         return this;
     }
 
     public stop(delay?: number, options?: AudioAdjustmentOptions): Track {
-        console.log(`stub stop with ${delay} seconds of delay with options ${options}`);
+        if (!this.playingSource?.isActive) {
+            return this;
+        }
+
+        const position = this.playingSource.position();
+        if (position != -1) {
+            this.resumeMarker = position;
+        }
+        console.log({ resumeMarker: this.resumeMarker });
+
+        const stopOptions = buildOptions(options, defaults.stopImmediate);
+        if (delay != undefined && options?.delay == undefined) {
+            stopOptions.delay += delay;
+        }
+
+        const scheduledStop = this._time + stopOptions.delay + stopOptions.duration;
+        if (this.nextStopTime == 0 || scheduledStop < this.nextStopTime) {
+            this.nextStopTime = scheduledStop;
+        }
+        this.playingSource.stop(this.nextStopTime);
+        automation(this.audioContext, this.gainPrimaryNode.gain, 0, stopOptions, true);
+
         return this;
     }
 
@@ -391,6 +463,7 @@ class TrackSingle implements Track {
 
     public swap(options?: TrackSwapOptions | TrackSwapAdvancedOptions): Track {
         console.log(`stub swap with ${options}`);
+        this.loadedSource = undefined;
         return this;
     }
 
