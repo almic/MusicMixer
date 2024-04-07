@@ -197,7 +197,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
         if (sampleIndex == -1) {
             return sampleIndex;
         }
-        return sampleIndex * this.buffer.sampleRate;
+        return sampleIndex / this.buffer.sampleRate;
     }
 
     /**
