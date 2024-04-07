@@ -92,9 +92,7 @@ class MusicMixer {
      * @returns {MusicMixer} this MusicMixer
      */
     public volume(volume: number, options?: AudioAdjustmentOptions): MusicMixer {
-        const adjustment = options
-            ? buildOptions(options, defaults.automationDefault)
-            : defaults.automationDefault;
+        const adjustment = buildOptions(options, defaults.automationDefault);
 
         automation(this.audioContext, this.gainNode.gain, volume, adjustment);
 
