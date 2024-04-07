@@ -37,6 +37,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
     private readonly stereoPannerNode: StereoPannerNode;
 
     private path: string | null = null;
+    private _isDestroyed: boolean = false;
     private _isStarted: boolean = false;
     private _isStopped: boolean = false;
     private _isEnded: boolean = false;
@@ -82,6 +83,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
      * @returns clone
      */
     public clone(): AudioSourceNode {
+        this.throwIfDestroyed();
         const selfClone = new AudioSourceNode(this.audioContext);
         selfClone.path = this.path;
         this.copyBufferTo(selfClone);
@@ -93,6 +95,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
      * @param other AudioSourceNode to copy into
      */
     public copyBufferTo(other: AudioSourceNode): void {
+        this.throwIfDestroyed();
         if (!this.buffer) {
             other.buffer = null;
             return;
@@ -123,6 +126,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
         outputIndex?: number,
         inputIndex?: number,
     ): AudioNode | void {
+        this.throwIfDestroyed();
         // We only want to diconnect/ connect the final gain node, doing anything else splits too much logic around
         // that is needed to track the playhead position on the source node. Source connections are made only when
         // the buffer source is known.
@@ -140,6 +144,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
     public disconnect(destinationParam: AudioParam): void;
     public disconnect(destinationParam: AudioParam, output: number): void;
     public disconnect(param1?: number | AudioNode | AudioParam, output?: number, input?: number) {
+        this.throwIfDestroyed();
         // Only diconnect the final gain node, the other nodes will all stay connected
         if (param1 == undefined) {
             return this.gainNode.disconnect();
@@ -163,6 +168,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
     }
 
     async load(path: string): Promise<void> {
+        this.throwIfDestroyed();
         this.path = path;
         const audioFile = await fetch(this.path);
         const decodedBuffer = await this.audioContext.decodeAudioData(await audioFile.arrayBuffer());
@@ -170,11 +176,13 @@ class AudioSourceNode implements AudioBufferSourceNode {
     }
 
     volume(volume: number, options?: AudioAdjustmentOptions): AudioSourceNode {
+        this.throwIfDestroyed();
         console.log(`stub volume ${volume} with options ${options}`);
         return this;
     }
 
     pan(pan: number, options?: AudioAdjustmentOptions): AudioSourceNode {
+        this.throwIfDestroyed();
         console.log(`stub pan ${pan} with options ${options}`);
         return this;
     }
@@ -182,6 +190,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
     pan3d(): AudioSourceNode {
         // TODO: ...someday...
         // https://github.com/twoz/hrtf-panner-js/blob/master/hrtf.js
+        this.throwIfDestroyed();
         return this;
     }
 
@@ -201,6 +210,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
      * @see https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start
      */
     start(when?: number, offset?: number, duration?: number): void {
+        this.throwIfDestroyed();
         if (!this.buffer) {
             console.warn(`Cannot start an AudioSourceNode without first loading a buffer.`);
             return;
@@ -250,6 +260,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
     }
 
     stop(when?: number): void {
+        this.throwIfDestroyed();
         if (this._isStarted) {
             this._isStopped = true;
             return this.sourceNode.stop(when);
@@ -263,6 +274,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
      * [1]: <https://webaudio.github.io/web-audio-api/#playhead-position> "Playhead Position"
      */
     public position(): number {
+        this.throwIfDestroyed();
         if (this.buffer == null) {
             return -1;
         }
@@ -284,6 +296,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
      * [1]: <https://webaudio.github.io/web-audio-api/#playhead-position> "Playhead Position"
      */
     public positionSample(): number {
+        this.throwIfDestroyed();
         if (this.bufferHalfLength == null || this._isEnded) {
             return -1;
         }
@@ -328,19 +341,30 @@ class AudioSourceNode implements AudioBufferSourceNode {
         return this._isEnded;
     }
 
+    /**
+     * @returns `true` if this AudioSourceNode has been destroyed
+     */
+    get isDestroyed() {
+        return this._isDestroyed;
+    }
+
     get onended() {
+        this.throwIfDestroyed();
         return this.onEndedCallback;
     }
 
     set onended(callback) {
+        this.throwIfDestroyed();
         this.onEndedCallback = callback;
     }
 
     get buffer(): AudioBuffer | null {
+        this.throwIfDestroyed();
         return this.sourceNode.buffer;
     }
 
     set buffer(buffer: AudioBuffer | null) {
+        this.throwIfDestroyed();
         const computedBuffer = AudioSourceNode.computeBufferWithPositionChannel(buffer);
         this.computeConnections(computedBuffer?.numberOfChannels ?? 0);
         this.bufferHalfLength = AudioSourceNode.computeBufferHalfLength(computedBuffer);
@@ -449,51 +473,104 @@ class AudioSourceNode implements AudioBufferSourceNode {
         this.merger.connect(this.stereoPannerNode);
     }
 
+    private throwIfDestroyed(): void {
+        if (this._isDestroyed) {
+            throw new Error(
+                'This AudioSourceNode has been destroyed, it is invalid behavior to call this method. Check the stack trace.',
+            );
+        }
+    }
+
+    /**
+     * Rapidly deconstruct this object and its properties in the hopes of freeing memory quickly.
+     * Is it okay to call this method multiple times.
+     */
+    public destroy(): void {
+        this._isDestroyed = true;
+        if (this.sourceNode) {
+            this.sourceNode.stop();
+            this.sourceNode.disconnect();
+            this.sourceNode.buffer = null;
+            (this.sourceNode as any) = undefined;
+        }
+        if (this.gainNode) {
+            this.gainNode.disconnect();
+            (this.gainNode as any) = undefined;
+        }
+        if (this.stereoPannerNode) {
+            this.stereoPannerNode.disconnect();
+            (this.stereoPannerNode as any) = undefined;
+        }
+        if (this.analyser) {
+            (this.analyser as any) = undefined;
+        }
+        if (this.merger) {
+            this.merger.disconnect();
+            (this.merger as any) = undefined;
+        }
+        if (this.splitter) {
+            this.splitter.disconnect();
+            (this.splitter as any) = undefined;
+        }
+    }
+
     get detune() {
+        this.throwIfDestroyed();
         return this.sourceNode.detune;
     }
 
     get loop() {
+        this.throwIfDestroyed();
         return this.sourceNode.loop;
     }
 
     set loop(value: boolean) {
+        this.throwIfDestroyed();
         this.sourceNode.loop = value;
     }
 
     get loopStart() {
+        this.throwIfDestroyed();
         return this.sourceNode.loopStart;
     }
 
     set loopStart(value: number) {
+        this.throwIfDestroyed();
         this.sourceNode.loopStart = value;
     }
 
     get loopEnd() {
+        this.throwIfDestroyed();
         return this.sourceNode.loopEnd;
     }
 
     set loopEnd(value: number) {
+        this.throwIfDestroyed();
         this.sourceNode.loopEnd = value;
     }
 
     get playbackRate() {
+        this.throwIfDestroyed();
         return this.sourceNode.playbackRate;
     }
 
     get context() {
+        this.throwIfDestroyed();
         return this.audioContext;
     }
 
     get channelCount() {
+        this.throwIfDestroyed();
         return this.sourceNode.channelCount;
     }
 
     get channelCountMode() {
+        this.throwIfDestroyed();
         return this.sourceNode.channelCountMode;
     }
 
     get channelInterpretation() {
+        this.throwIfDestroyed();
         return this.sourceNode.channelInterpretation;
     }
 
@@ -502,6 +579,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
         listener: (this: AudioBufferSourceNode, ev: Event) => any,
         options?: boolean | AddEventListenerOptions,
     ): void {
+        this.throwIfDestroyed();
         this.sourceNode.addEventListener(type, listener, options);
     }
 
@@ -510,10 +588,12 @@ class AudioSourceNode implements AudioBufferSourceNode {
         listener: (this: AudioBufferSourceNode, ev: Event) => any,
         options?: boolean | EventListenerOptions,
     ): void {
+        this.throwIfDestroyed();
         this.sourceNode.removeEventListener(type, listener, options);
     }
 
     dispatchEvent(event: Event): boolean {
+        this.throwIfDestroyed();
         return this.sourceNode.dispatchEvent(event);
     }
 }
