@@ -72,9 +72,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
     public clone(): AudioSourceNode {
         const selfClone = new AudioSourceNode(this.audioContext);
         selfClone.path = this.path;
-        if (this.buffer) {
-            this.copyBufferTo(selfClone);
-        }
+        this.copyBufferTo(selfClone);
         return selfClone;
     }
 
