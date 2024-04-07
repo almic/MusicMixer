@@ -37,6 +37,16 @@ class AudioSourceNode implements AudioBufferSourceNode {
     private readonly stereoPannerNode: StereoPannerNode;
 
     private path: string | null = null;
+    private _isStarted: boolean = false;
+    private _isStopped: boolean = false;
+    private _isEnded: boolean = false;
+    private onEndedMainCallback: (event: Event) => void = (event) => {
+        this._isEnded = true;
+        if (this.onEndedCallback) {
+            this.onEndedCallback.call(this, event);
+        }
+    };
+    private onEndedCallback: null | ((event: Event) => void) = null;
 
     // Nodes necessary for tracking position
     private readonly analyser: AnalyserNode;
@@ -60,6 +70,8 @@ class AudioSourceNode implements AudioBufferSourceNode {
         if (destination) {
             this.connect(destination);
         }
+
+        this.sourceNode.onended = this.onEndedMainCallback;
     }
 
     /**
@@ -173,17 +185,80 @@ class AudioSourceNode implements AudioBufferSourceNode {
         return this;
     }
 
+    /**
+     * This method may be called multiple times during the lifetime of the AudioSourceNode.
+     * To acheive this utility, the active sourceNode is "released" following a call to stop(),
+     * and a new source is constructed that shares the same buffer.
+     *
+     * Implementation Notes:
+     * - If no buffer has been loaded, this method does nothing
+     * - Upon constructing a new internal AudioBufferSourceNode, only the loaded buffer will be
+     *   shared from the old node. All properties managed by the AudioBufferSourceNode, such as
+     *   playbackRate, looping, stopping, and events (onended) will remain on the old one.
+     * - At the moment start() is called, methods that operate on the source node directly will
+     *   operate on the new source node, even if playback hasn't yet begun.
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start
+     */
     start(when?: number, offset?: number, duration?: number): void {
+        if (!this.buffer) {
+            console.warn(`Cannot start an AudioSourceNode without first loading a buffer.`);
+            return;
+        }
+
+        if (this._isStarted || this._isStopped) {
+            const buffer: AudioBuffer | null = this.sourceNode.buffer;
+            this.sourceNode.onended = this.onEndedCallback;
+            this.stop(when);
+            this._isStopped = false;
+            const oldSourceNode = this.sourceNode;
+            if (when && when > this.audioContext.currentTime) {
+                setTimeout(
+                    () => {
+                        oldSourceNode.stop();
+                        oldSourceNode.disconnect();
+                        oldSourceNode.buffer = null;
+                    },
+                    when && when > this.audioContext.currentTime
+                        ? 1000 * (this.audioContext.currentTime - when)
+                        : 0,
+                );
+            }
+            this.sourceNode = this.audioContext.createBufferSource();
+            this.sourceNode.buffer = buffer;
+            this.sourceNode.onended = this.onEndedMainCallback;
+            if (this.sourceNode.buffer && !this.splitter) {
+                console.warn(
+                    `An AudioSourceNode appears to be in an invalid state, as a buffer has been ` +
+                        `loaded, and no internal splitter node has been constructed. ` +
+                        `This is a mistake.`,
+                );
+            } else if (this.splitter) {
+                this.sourceNode.connect(this.splitter);
+            }
+        }
+
+        if (when && when > this.audioContext.currentTime) {
+            setTimeout(() => {
+                this._isEnded = false;
+            }, 1000 * (this.audioContext.currentTime - when));
+        } else {
+            this._isEnded = false;
+        }
+        this._isStarted = true;
         return this.sourceNode.start(when, offset, duration);
     }
 
     stop(when?: number): void {
-        return this.sourceNode.stop(when);
+        if (this._isStarted) {
+            this._isStopped = true;
+            return this.sourceNode.stop(when);
+        }
     }
 
     /**
      * Retrieve the [playhead position][1] of the source buffer in seconds.
-     * A value of -1 means the buffer is null.
+     * A value of -1 means the buffer is null, or the source is playing silence (all zeros).
      *
      * [1]: <https://webaudio.github.io/web-audio-api/#playhead-position> "Playhead Position"
      */
@@ -200,12 +275,16 @@ class AudioSourceNode implements AudioBufferSourceNode {
 
     /**
      * Retrieve the buffer sample index, represented by the internal position track.
-     * See [playhead position][1]. A value of -1 means the buffer is null.
+     * See [playhead position][1].
+     *
+     * A value of -1 is returned in these conditions:
+     *   - The source is not playing
+     *   - The buffer is not set
      *
      * [1]: <https://webaudio.github.io/web-audio-api/#playhead-position> "Playhead Position"
      */
     public positionSample(): number {
-        if (this.bufferHalfLength == null) {
+        if (this.bufferHalfLength == null || this._isEnded) {
             return -1;
         }
         this.analyser.getFloatTimeDomainData(this.positionContainer);
@@ -216,12 +295,45 @@ class AudioSourceNode implements AudioBufferSourceNode {
         return index + this.bufferHalfLength;
     }
 
+    /**
+     * Due to the nature of event timers, this can return `true` after a source has ended.
+     * The recommendation is to check `isEnded()` inside a setTimer() with no delay, and
+     * do some fallback logic if it's `true`, or to make use of the `onended` callback.
+     * @returns `true` if the source has been started, and has probably not yet ended.
+     */
+    get isActive() {
+        return this.isStarted && !this.isEnded;
+    }
+
+    /**
+     * @returns `true` if the source has been scheduled to start
+     */
+    get isStarted() {
+        return this._isStarted;
+    }
+
+    /**
+     * @returns `true` if the source has been scheduled to stop
+     */
+    get isStopped() {
+        return this._isStopped;
+    }
+
+    /**
+     * In the case that the source hasn't been started yet, this will be `false`.
+     * Use `isStarted()` to determine if the source has been started.
+     * @returns `true` if the source has ended and is therefore outputting silence.
+     */
+    get isEnded() {
+        return this._isEnded;
+    }
+
     get onended() {
-        return this.sourceNode.onended;
+        return this.onEndedCallback;
     }
 
     set onended(callback) {
-        this.sourceNode.onended = callback;
+        this.onEndedCallback = callback;
     }
 
     get buffer(): AudioBuffer | null {
