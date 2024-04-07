@@ -37,6 +37,12 @@ declare class AudioSourceNode implements AudioBufferSourceNode {
     private readonly gainNode;
     private readonly stereoPannerNode;
     private path;
+    private _isDestroyed;
+    private _isStarted;
+    private _isStopped;
+    private _isEnded;
+    private onEndedMainCallback;
+    private onEndedCallback;
     private readonly analyser;
     private merger?;
     private splitter?;
@@ -61,33 +67,95 @@ declare class AudioSourceNode implements AudioBufferSourceNode {
     connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
     connect(destination: AudioParam, outputIndex?: number): void;
     disconnect(): void;
+    disconnect(output: number): void;
+    disconnect(destinationNode: AudioNode): void;
+    disconnect(destinationNode: AudioNode, output: number): void;
+    disconnect(destinationNode: AudioNode, output: number, input: number): void;
+    disconnect(destinationParam: AudioParam): void;
+    disconnect(destinationParam: AudioParam, output: number): void;
     load(path: string): Promise<void>;
     volume(volume: number, options?: AudioAdjustmentOptions): AudioSourceNode;
     pan(pan: number, options?: AudioAdjustmentOptions): AudioSourceNode;
     pan3d(): AudioSourceNode;
+    /**
+     * This method may be called multiple times during the lifetime of the AudioSourceNode.
+     * To acheive this utility, the active sourceNode is "released" following a call to stop(),
+     * and a new source is constructed that shares the same buffer.
+     *
+     * Implementation Notes:
+     * - If no buffer has been loaded, this method does nothing
+     * - Upon constructing a new internal AudioBufferSourceNode, only the loaded buffer will be
+     *   shared from the old node. All properties managed by the AudioBufferSourceNode, such as
+     *   playbackRate, looping, stopping, and events (onended) will remain on the old one.
+     * - At the moment start() is called, methods that operate on the source node directly will
+     *   operate on the new source node, even if playback hasn't yet begun.
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start
+     */
     start(when?: number, offset?: number, duration?: number): void;
     stop(when?: number): void;
     /**
      * Retrieve the [playhead position][1] of the source buffer in seconds.
-     * A value of -1 means the buffer is null.
+     * A value of -1 means the buffer is null, or the source is playing silence (all zeros).
      *
      * [1]: <https://webaudio.github.io/web-audio-api/#playhead-position> "Playhead Position"
      */
     position(): number;
     /**
      * Retrieve the buffer sample index, represented by the internal position track.
-     * See [playhead position][1]. A value of -1 means the buffer is null.
+     * See [playhead position][1].
+     *
+     * A value of -1 is returned in these conditions:
+     *   - The source is not playing
+     *   - The buffer is not set
      *
      * [1]: <https://webaudio.github.io/web-audio-api/#playhead-position> "Playhead Position"
      */
     positionSample(): number;
-    get onended(): ((this: AudioScheduledSourceNode, ev: Event) => any) | null;
-    set onended(callback: ((this: AudioScheduledSourceNode, ev: Event) => any) | null);
+    /**
+     * Due to the nature of event timers, this can return `true` after a source has ended.
+     * The recommendation is to check `isEnded()` inside a setTimer() with no delay, and
+     * do some fallback logic if it's `true`, or to make use of the `onended` callback.
+     * @returns `true` if the source has been started, and has probably not yet ended.
+     */
+    get isActive(): boolean;
+    /**
+     * @returns `true` if the source has been scheduled to start
+     */
+    get isStarted(): boolean;
+    /**
+     * @returns `true` if the source has been scheduled to stop
+     */
+    get isStopped(): boolean;
+    /**
+     * In the case that the source hasn't been started yet, this will be `false`.
+     * Use `isStarted()` to determine if the source has been started.
+     * @returns `true` if the source has ended and is therefore outputting silence.
+     */
+    get isEnded(): boolean;
+    /**
+     * @returns `true` if this AudioSourceNode has been destroyed
+     */
+    get isDestroyed(): boolean;
+    get onended(): ((event: Event) => void) | null;
+    set onended(callback: ((event: Event) => void) | null);
     get buffer(): AudioBuffer | null;
     set buffer(buffer: AudioBuffer | null);
     /**
-     * Custom implementation of buffer assignment to support reading [playhead position][1] from
-     * the source node, which is currently unsupported.
+     * Static definition for how to compute the half-length of a buffer.
+     *
+     * Why? Because it's computed twice and I want to be certain that it is always the same.
+     *
+     * Why is this computed twice? To avoid a race condition caused by loading a buffer and then
+     * building the node graph.
+     *
+     * Why do we do it in that order? You ask a lot of questions! Go look at the code!
+     * @param buffer the buffer to compute half-length for
+     */
+    private static computeBufferHalfLength;
+    /**
+     * Custom buffer computation to support reading [playhead position][1] from the source node,
+     * which is currently unsupported by Web Audio API (but maybe someday it'll be exposed).
      *
      * See [first unrepresentable IEEE 754 integer][2] for the reasoning behind using a
      * pigeon hole type implementation.
@@ -95,8 +163,21 @@ declare class AudioSourceNode implements AudioBufferSourceNode {
      * [1]: <https://webaudio.github.io/web-audio-api/#playhead-position> "Playhead Position"
      * [2]: <https://stackoverflow.com/a/3793950/4561008> "First unrepresentable IEEE 754 integer"
      */
-    private computeBuffer;
+    private static computeBufferWithPositionChannel;
+    /**
+     * Constructs the internal audio graph for this AudioSourceNode based on the number of channels
+     * provided. The splitter will construct with `bufferChannels` channel outputs, where the last
+     * channel is presumed to be the position channel. The merge node, if required, will construct
+     * with `bufferChannels - 1` channel inputs, so that the position channel is not output
+     * @param bufferChannels number of channels to initialize
+     */
     private computeConnections;
+    private throwIfDestroyed;
+    /**
+     * Rapidly deconstruct this object and its properties in the hopes of freeing memory quickly.
+     * Is it okay to call this method multiple times.
+     */
+    destroy(): void;
     get detune(): AudioParam;
     get loop(): boolean;
     set loop(value: boolean);

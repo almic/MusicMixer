@@ -40,5 +40,16 @@ export type AudioAdjustmentOptions = {
 };
 /**
  * Automation function for AudioParam
+ *
+ * Set `skipImmediate` to `true` if you want the automation to play out in its entirety, even if
+ * the current value of the audioParam is at `value`. By default, the automation will cancel active
+ * automations, so in many cases playing the full duration of the automation is not needed.
+ *
+ * @param audioContext the audioContext from which to use as the time system
+ * @param audioParam the audioParam to automate
+ * @param value the value to automate towards
+ * @param options the method of automation
+ * @param skipImmediate if true, dont short the automation if the current value is already at the
+ *                      given value, allow the automation to play out.
  */
-export default function automation(audioContext: AudioContext, audioParam: AudioParam, value: number, options: Required<AudioAdjustmentOptions>): void;
+export default function automation(audioContext: AudioContext, audioParam: AudioParam, value: number, options: Required<AudioAdjustmentOptions>, skipImmediate?: boolean): void;

@@ -139,6 +139,7 @@ interface Track {
      * Implementation Notes:
      * - If `options.delay` is provided, it will be used over `delay`.
      * - Does nothing if there is no playing AudioSource.
+     * - For consecutive calls, the earliest time from consecuitive calls will be used.
      * - Saves the playhead position of the AudioSource at the time this method is called,
      *   so that a future `start()` call will resume from the saved position.
      * @param delay optional delay time
@@ -173,6 +174,9 @@ interface Track {
      * Implementation Notes:
      * - After this method returns, all methods that modify the AudioSource of this Track will
      *   modify the new source that has been swapped in.
+     * - After this method returns, the internal state of the Track will be restored as if the
+     *   Track has been reconstructed with the previously loaded AudioSourceNode, and then start()
+     *   was called.
      * @param options swap parameters
      * @returns {Track} this Track
      */
@@ -257,10 +261,54 @@ declare class TrackSingle implements Track {
     private readonly audioContext;
     readonly destination: AudioNode;
     readonly source: AudioSourceNode;
+    /**
+     * The master gain for the track, it is exposed for automation
+     */
     private readonly gainNode;
+    /**
+     * Internal gain node for fading in/ out the primary source, for stopping and starting
+     */
+    private readonly gainPrimaryNode;
+    /**
+     * Internal gain node for fading in the secondary source, swapping primary sources
+     */
+    private readonly gainSecondaryNode;
+    /**
+     * Tracks the most recently loaded source, used in swaping/ starting
+     */
     private loadedSource?;
+    /**
+     * Tracks the playing source, on which automations and stopping effect
+     */
     private playingSource?;
+    /**
+     * Stores a position, in seconds, on which stop() will save the playhead
+     * position at the moment of activation, on which play() will resume from
+     */
+    private resumeMarker;
+    /**
+     * Stores the earliest scheduled stop time, used to disable the ability to call
+     * stop continuously with future times such that the underlying AudioSourceNode
+     * never reaches a stop time.
+     */
+    private nextStopTime;
+    /**
+     * Tracks whether or not the loadSource() method has previously been called,
+     * used by start() to determine if a swap() or plain start() will occur.
+     */
     private isLoadSourceCalled;
+    /**
+     * Implementation Notes:
+     * - If the given AudioSourceNode has outgoing connections, they will be disconnected at the
+     *   time this Track begins playback of the AudioSourceNode.
+     * - Providing an AudioSourceNode that is controlled by another Track has undefined behavior.
+     *   If you must reuse an AudioSourceNode that may be controlled by another Track, use the
+     *   clone() method to obtain a new node.
+     * @param name
+     * @param audioContext
+     * @param destination
+     * @param source
+     */
     constructor(name: string, audioContext: AudioContext, destination: AudioNode, source: AudioSourceNode);
     toString(): string;
     start(delay?: number, options?: AudioAdjustmentOptions, duration?: number): Track;

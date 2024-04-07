@@ -21,19 +21,30 @@ export var AudioRampType;
 })(AudioRampType || (AudioRampType = {}));
 /**
  * Automation function for AudioParam
+ *
+ * Set `skipImmediate` to `true` if you want the automation to play out in its entirety, even if
+ * the current value of the audioParam is at `value`. By default, the automation will cancel active
+ * automations, so in many cases playing the full duration of the automation is not needed.
+ *
+ * @param audioContext the audioContext from which to use as the time system
+ * @param audioParam the audioParam to automate
+ * @param value the value to automate towards
+ * @param options the method of automation
+ * @param skipImmediate if true, dont short the automation if the current value is already at the
+ *                      given value, allow the automation to play out.
  */
-export default function automation(audioContext, audioParam, value, options) {
+export default function automation(audioContext, audioParam, value, options, skipImmediate = false) {
     const currentValue = audioParam.value;
     const difference = value - currentValue;
     // Stop automations and immediately ramp.
-    if (Math.abs(difference) < Number.EPSILON) {
-        audioParam.cancelAndHoldAtTime(audioContext.currentTime);
+    if (!skipImmediate && Math.abs(difference) < Number.EPSILON) {
         audioParam.setValueAtTime(currentValue, audioContext.currentTime);
+        audioParam.cancelAndHoldAtTime(audioContext.currentTime);
         audioParam.linearRampToValueAtTime(value, options.delay + audioContext.currentTime);
         return;
     }
-    audioParam.cancelAndHoldAtTime(options.delay + audioContext.currentTime);
     audioParam.setValueAtTime(currentValue, options.delay + audioContext.currentTime);
+    audioParam.cancelAndHoldAtTime(options.delay + audioContext.currentTime);
     if (Array.isArray(options.ramp)) {
         const valueCurve = [];
         for (const markiplier of options.ramp) {
@@ -41,6 +52,25 @@ export default function automation(audioContext, audioParam, value, options) {
         }
         audioParam.setValueCurveAtTime(valueCurve, options.delay + audioContext.currentTime, options.duration);
         return;
+    }
+    /**
+     * It is necessary to explain the function of exponential ramping:
+     *
+     * - Ramping from zero to any value is the same as using setValueAtTime()
+     * - Ramping from any value to zero is undefined
+     * - Ramping to values near zero have an instantaneous effect
+     *
+     * The only way to "exponentially" ramp to or away from zero is to use
+     * natural ramping; `setTargetAtTime()`. Therefore, an exponential ramp is
+     * converted to a natural ramp when the start or end is near zero.
+     *
+     * This conversion is done with the goal of being intuitive, as it may not
+     * be well understood that normal exponential ramping has these limitations.
+     */
+    if (options.ramp == AudioRampType.EXPONENTIAL &&
+        (Math.abs(currentValue) < Number.EPSILON || Math.abs(value) < Number.EPSILON)) {
+        options = structuredClone(options);
+        options.ramp = AudioRampType.NATURAL;
     }
     switch (options.ramp) {
         case AudioRampType.EXPONENTIAL: {
@@ -53,19 +83,22 @@ export default function automation(audioContext, audioParam, value, options) {
         }
         case AudioRampType.NATURAL: {
             // Logarithmic approach to value, it is 95% the way there after 3 timeConstant, so we linearly ramp at that point
-            const timeConstant = options.duration / 4;
+            const timeSteps = 4;
+            const timeConstant = options.duration / timeSteps;
             audioParam.setTargetAtTime(value, options.delay + audioContext.currentTime, timeConstant);
-            audioParam.cancelAndHoldAtTime(options.delay + timeConstant * 3 + audioContext.currentTime);
-            // The following event is implicitly added, per WebAudio spec.
+            audioParam.cancelAndHoldAtTime(timeConstant * (timeSteps - 1) + options.delay + audioContext.currentTime);
+            // ThE fOlLoWiNg EvEnT iS iMpLiCiTlY aDdEd, PeR wEbAuDiO SpEc.
             // https://webaudio.github.io/web-audio-api/#dom-audioparam-cancelandholdattime
-            // this.gainNode.gain.setValueAtTime(currentValue + (difference * (1 - Math.pow(Math.E, -3))), timeConstant * 3 + this.currentTime);
+            // https://www.youtube.com/watch?v=EzWNBmjyv7Y
+            audioParam.setValueAtTime(currentValue + difference * (1 - Math.pow(Math.E, -(timeSteps - 1))), timeConstant * (timeSteps - 1) + audioContext.currentTime);
             audioParam.linearRampToValueAtTime(value, options.delay + options.duration + audioContext.currentTime);
             break;
         }
         default: {
-            audioParam.setValueAtTime(value, options.delay);
+            console.warn(`Automation function received unknown ramp type ${options.ramp}`);
+            audioParam.setValueAtTime(value, options.delay + audioContext.currentTime);
             break;
         }
     }
 }
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiYXV0b21hdGlvbi5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uL3NyYy9hdXRvbWF0aW9uLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBOztHQUVHO0FBQ0gsTUFBTSxDQUFOLElBQVksYUFrQlg7QUFsQkQsV0FBWSxhQUFhO0lBQ3JCOztPQUVHO0lBQ0gsa0NBQWlCLENBQUE7SUFFakI7O09BRUc7SUFDSCw0Q0FBMkIsQ0FBQTtJQUUzQjs7Ozs7T0FLRztJQUNILG9DQUFtQixDQUFBO0FBQ3ZCLENBQUMsRUFsQlcsYUFBYSxLQUFiLGFBQWEsUUFrQnhCO0FBeUJEOztHQUVHO0FBQ0gsTUFBTSxDQUFDLE9BQU8sVUFBVSxVQUFVLENBQzlCLFlBQTBCLEVBQzFCLFVBQXNCLEVBQ3RCLEtBQWEsRUFDYixPQUF5QztJQUV6QyxNQUFNLFlBQVksR0FBRyxVQUFVLENBQUMsS0FBSyxDQUFDO0lBQ3RDLE1BQU0sVUFBVSxHQUFHLEtBQUssR0FBRyxZQUFZLENBQUM7SUFFeEMseUNBQXlDO0lBQ3pDLElBQUksSUFBSSxDQUFDLEdBQUcsQ0FBQyxVQUFVLENBQUMsR0FBRyxNQUFNLENBQUMsT0FBTyxFQUFFLENBQUM7UUFDeEMsVUFBVSxDQUFDLG1CQUFtQixDQUFDLFlBQVksQ0FBQyxXQUFXLENBQUMsQ0FBQztRQUN6RCxVQUFVLENBQUMsY0FBYyxDQUFDLFlBQVksRUFBRSxZQUFZLENBQUMsV0FBVyxDQUFDLENBQUM7UUFDbEUsVUFBVSxDQUFDLHVCQUF1QixDQUFDLEtBQUssRUFBRSxPQUFPLENBQUMsS0FBSyxHQUFHLFlBQVksQ0FBQyxXQUFXLENBQUMsQ0FBQztRQUNwRixPQUFPO0lBQ1gsQ0FBQztJQUVELFVBQVUsQ0FBQyxtQkFBbUIsQ0FBQyxPQUFPLENBQUMsS0FBSyxHQUFHLFlBQVksQ0FBQyxXQUFXLENBQUMsQ0FBQztJQUN6RSxVQUFVLENBQUMsY0FBYyxDQUFDLFlBQVksRUFBRSxPQUFPLENBQUMsS0FBSyxHQUFHLFlBQVksQ0FBQyxXQUFXLENBQUMsQ0FBQztJQUNsRixJQUFJLEtBQUssQ0FBQyxPQUFPLENBQUMsT0FBTyxDQUFDLElBQUksQ0FBQyxFQUFFLENBQUM7UUFDOUIsTUFBTSxVQUFVLEdBQUcsRUFBRSxDQUFDO1FBQ3RCLEtBQUssTUFBTSxVQUFVLElBQUksT0FBTyxDQUFDLElBQUksRUFBRSxDQUFDO1lBQ3BDLFVBQVUsQ0FBQyxJQUFJLENBQUMsWUFBWSxHQUFHLFVBQVUsR0FBRyxVQUFVLENBQUMsQ0FBQztRQUM1RCxDQUFDO1FBQ0QsVUFBVSxDQUFDLG1CQUFtQixDQUMxQixVQUFVLEVBQ1YsT0FBTyxDQUFDLEtBQUssR0FBRyxZQUFZLENBQUMsV0FBVyxFQUN4QyxPQUFPLENBQUMsUUFBUSxDQUNuQixDQUFDO1FBQ0YsT0FBTztJQUNYLENBQUM7SUFFRCxRQUFRLE9BQU8sQ0FBQyxJQUFJLEVBQUUsQ0FBQztRQUNuQixLQUFLLGFBQWEsQ0FBQyxXQUFXLENBQUMsQ0FBQyxDQUFDO1lBQzdCLFVBQVUsQ0FBQyw0QkFBNEIsQ0FDbkMsS0FBSyxFQUNMLE9BQU8sQ0FBQyxLQUFLLEdBQUcsT0FBTyxDQUFDLFFBQVEsR0FBRyxZQUFZLENBQUMsV0FBVyxDQUM5RCxDQUFDO1lBQ0YsTUFBTTtRQUNWLENBQUM7UUFDRCxLQUFLLGFBQWEsQ0FBQyxNQUFNLENBQUMsQ0FBQyxDQUFDO1lBQ3hCLFVBQVUsQ0FBQyx1QkFBdUIsQ0FDOUIsS0FBSyxFQUNMLE9BQU8sQ0FBQyxLQUFLLEdBQUcsT0FBTyxDQUFDLFFBQVEsR0FBRyxZQUFZLENBQUMsV0FBVyxDQUM5RCxDQUFDO1lBQ0YsTUFBTTtRQUNWLENBQUM7UUFDRCxLQUFLLGFBQWEsQ0FBQyxPQUFPLENBQUMsQ0FBQyxDQUFDO1lBQ3pCLGlIQUFpSDtZQUNqSCxNQUFNLFlBQVksR0FBRyxPQUFPLENBQUMsUUFBUSxHQUFHLENBQUMsQ0FBQztZQUMxQyxVQUFVLENBQUMsZUFBZSxDQUFDLEtBQUssRUFBRSxPQUFPLENBQUMsS0FBSyxHQUFHLFlBQVksQ0FBQyxXQUFXLEVBQUUsWUFBWSxDQUFDLENBQUM7WUFDMUYsVUFBVSxDQUFDLG1CQUFtQixDQUFDLE9BQU8sQ0FBQyxLQUFLLEdBQUcsWUFBWSxHQUFHLENBQUMsR0FBRyxZQUFZLENBQUMsV0FBVyxDQUFDLENBQUM7WUFDNUYsOERBQThEO1lBQzlELCtFQUErRTtZQUMvRSxvSUFBb0k7WUFDcEksVUFBVSxDQUFDLHVCQUF1QixDQUM5QixLQUFLLEVBQ0wsT0FBTyxDQUFDLEtBQUssR0FBRyxPQUFPLENBQUMsUUFBUSxHQUFHLFlBQVksQ0FBQyxXQUFXLENBQzlELENBQUM7WUFDRixNQUFNO1FBQ1YsQ0FBQztRQUNELE9BQU8sQ0FBQyxDQUFDLENBQUM7WUFDTixVQUFVLENBQUMsY0FBYyxDQUFDLEtBQUssRUFBRSxPQUFPLENBQUMsS0FBSyxDQUFDLENBQUM7WUFDaEQsTUFBTTtRQUNWLENBQUM7SUFDTCxDQUFDO0FBQ0wsQ0FBQyJ9
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiYXV0b21hdGlvbi5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uL3NyYy9hdXRvbWF0aW9uLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBOztHQUVHO0FBQ0gsTUFBTSxDQUFOLElBQVksYUFrQlg7QUFsQkQsV0FBWSxhQUFhO0lBQ3JCOztPQUVHO0lBQ0gsa0NBQWlCLENBQUE7SUFFakI7O09BRUc7SUFDSCw0Q0FBMkIsQ0FBQTtJQUUzQjs7Ozs7T0FLRztJQUNILG9DQUFtQixDQUFBO0FBQ3ZCLENBQUMsRUFsQlcsYUFBYSxLQUFiLGFBQWEsUUFrQnhCO0FBeUJEOzs7Ozs7Ozs7Ozs7O0dBYUc7QUFDSCxNQUFNLENBQUMsT0FBTyxVQUFVLFVBQVUsQ0FDOUIsWUFBMEIsRUFDMUIsVUFBc0IsRUFDdEIsS0FBYSxFQUNiLE9BQXlDLEVBQ3pDLGdCQUF5QixLQUFLO0lBRTlCLE1BQU0sWUFBWSxHQUFHLFVBQVUsQ0FBQyxLQUFLLENBQUM7SUFDdEMsTUFBTSxVQUFVLEdBQUcsS0FBSyxHQUFHLFlBQVksQ0FBQztJQUV4Qyx5Q0FBeUM7SUFDekMsSUFBSSxDQUFDLGFBQWEsSUFBSSxJQUFJLENBQUMsR0FBRyxDQUFDLFVBQVUsQ0FBQyxHQUFHLE1BQU0sQ0FBQyxPQUFPLEVBQUUsQ0FBQztRQUMxRCxVQUFVLENBQUMsY0FBYyxDQUFDLFlBQVksRUFBRSxZQUFZLENBQUMsV0FBVyxDQUFDLENBQUM7UUFDbEUsVUFBVSxDQUFDLG1CQUFtQixDQUFDLFlBQVksQ0FBQyxXQUFXLENBQUMsQ0FBQztRQUN6RCxVQUFVLENBQUMsdUJBQXVCLENBQUMsS0FBSyxFQUFFLE9BQU8sQ0FBQyxLQUFLLEdBQUcsWUFBWSxDQUFDLFdBQVcsQ0FBQyxDQUFDO1FBQ3BGLE9BQU87SUFDWCxDQUFDO0lBRUQsVUFBVSxDQUFDLGNBQWMsQ0FBQyxZQUFZLEVBQUUsT0FBTyxDQUFDLEtBQUssR0FBRyxZQUFZLENBQUMsV0FBVyxDQUFDLENBQUM7SUFDbEYsVUFBVSxD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

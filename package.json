@@ -8,7 +8,7 @@
     },
     "scripts": {
         "build": "npm run format && tsc -b && npm run copyDistToDocs",
-        "start": "onchange --await-write-finish 1000 \"src/**/*.ts\" \"src/**/*.js\" -- npm run build",
+        "start": "onchange --await-write-finish 1500 \"src/**/*.ts\" \"src/**/*.js\" -- npm run build",
         "format": "prettier src/**/*.ts src/**/*.js test/**/*.ts test/**/*.js --write",
         "copyDistToDocs": "xcopy .\\dist\\*.js .\\docs\\js\\lib /e /y /v /i /f && xcopy .\\dist\\*.d.ts .\\docs\\js\\lib /e /y /v /i /f",
         "test": "node test/build/index.js"
