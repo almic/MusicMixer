@@ -524,17 +524,46 @@ class TrackSingle implements Track {
         offsetOrDuration?: number,
         optionsOrDuration?: number | AudioAdjustmentOptions,
     ): AudioSourceNode {
-        console.log(
-            `stub playSource at ${path} with ${optionsOrDelayOrOffset}, ${offsetOrDuration}, and ${optionsOrDuration}`,
-        );
+        let options: AudioAdjustmentOptions | undefined;
+        let delay: number | undefined;
+        let offset: number | undefined;
+        let duration: number | undefined;
+
+        if (typeof optionsOrDelayOrOffset == 'number') {
+            if (optionsOrDuration == undefined || typeof optionsOrDuration == 'number') {
+                delay = optionsOrDelayOrOffset;
+                offset = offsetOrDuration;
+                duration = optionsOrDuration;
+            } else {
+                offset = optionsOrDelayOrOffset;
+                duration = offsetOrDuration;
+                options = optionsOrDuration;
+            }
+        } else {
+            options = optionsOrDelayOrOffset;
+        }
+
         const audioSource = this.loadSource(path);
-        this.start(0, options);
+        if (delay) {
+            this.start(delay, offset, duration);
+        } else if (options) {
+            if (offset != undefined && duration != undefined) {
+                this.start(offset, duration, options);
+            } else {
+                this.start(options);
+            }
+        } else {
+            this.start();
+        }
+
         return audioSource;
     }
 
     public loadSource(path: string): AudioSourceNode {
-        console.log(`stub loadSource at ${path}`);
-        return new AudioSourceNode(this.audioContext, this.gainNode);
+        this.loadedSource = new AudioSourceNode(this.audioContext);
+        this.isLoadSourceCalled = true;
+        this.loadedSource.load(path);
+        return this.loadedSource;
     }
 
     public swap(): Track;
@@ -550,12 +579,59 @@ class TrackSingle implements Track {
         offsetOrDuration?: number,
         optionsOrDuration?: number | TrackSwapOptions | TrackSwapAdvancedOptions,
     ): Track {
-        console.log(
-            `stub swap with ${optionsOrDelayOrOffset}, ${offsetOrDuration}, and ${optionsOrDuration}`
-        );
+        if (!this.isLoadSourceCalled) {
+            return this;
+        }
+        this.isLoadSourceCalled = false;
 
-        this.loadedSource = undefined;
-        return this;
+        if (!this.loadedSource) {
+            console.warn(
+                'Track has an invalid state, loadSource() seems to have been recently called, ' +
+                    'but there is no loaded source. This is a mistake.',
+            );
+            return this;
+        }
+        const originalSource = this.playingSource;
+        this.playingSource = undefined;
+
+        let options: TrackSwapOptions | TrackSwapAdvancedOptions | undefined;
+        let delay: number | undefined;
+        let offset: number | undefined;
+        let duration: number | undefined;
+        if (typeof optionsOrDelayOrOffset == 'number') {
+            if (optionsOrDuration == undefined || typeof optionsOrDuration == 'number') {
+                delay = optionsOrDelayOrOffset;
+                offset = offsetOrDuration;
+                duration = optionsOrDuration;
+            } else {
+                offset = optionsOrDelayOrOffset;
+                duration = offsetOrDuration;
+                options = optionsOrDuration;
+            }
+        } else {
+            options = optionsOrDelayOrOffset;
+        }
+
+        const swapOptions = buildOptions(options, defaults.trackSwapDefault);
+        if (delay != undefined) {
+            swapOptions.newSource.delay += delay;
+            swapOptions.oldSource.delay += delay;
+        }
+
+        if (originalSource) {
+            this.gainSecondaryNode.gain.value = this.gainPrimaryNode.gain.value;
+            originalSource.connect(this.gainSecondaryNode);
+            originalSource.disconnect(this.gainPrimaryNode);
+            originalSource.stop(this._time + swapOptions.oldSource.delay + swapOptions.oldSource.duration);
+            automation(this.audioContext, this.gainSecondaryNode.gain, 0, swapOptions.oldSource);
+            setTimeout(originalSource.destroy, swapOptions.oldSource.delay + swapOptions.oldSource.duration);
+        }
+
+        if (offset != undefined && duration != undefined) {
+            return this.start(offset, duration, swapOptions.newSource);
+        }
+
+        return this.start(swapOptions.newSource);
     }
 
     public volume(volume: number, options?: AudioAdjustmentOptions): Track {
