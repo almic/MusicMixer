@@ -140,46 +140,61 @@ interface Track {
      * Begin playback on the track, starting the loaded AudioSource.
      *
      * Implementation Notes:
-     * - If `options.delay` is provided, it will be used over `delay`.
      * - If this call follows a `loadSource()`, it will call `swap()` using a default OUT_IN swap.
      *   Merge the passed options with the default swap. Use `swap()` directly for more control.
      * - If the AudioSource attached to this Track is already playing, clone it as a new loaded source
      *   and call `swap()`, merging the passed options with the default swap options as above.
-     * - Using `duration` is equivalent to calling `start(delay, options)` and then `stop(delay + duration)`
+     * - Using `duration` is equivalent to calling `stop(delay + duration)` after this method returns.
      * @param delay optional delay time
-     * @param options adjustment parameters
+     * @param options adjustment parameters for fading in the source
+     * @param offset offset into the audio source to start playback from, with the same effects as
+     *               offset from the [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start#offset)
      * @param duration how long to play before stopping
      * @returns {Track} this Track
      */
-    start(delay?: number, options?: AudioAdjustmentOptions, duration?: number): Track;
+    start(): Track;
+    start(options: AudioAdjustmentOptions): Track;
+    start(delay: number, offset?: number, duration?: number): Track;
+    start(offset: number, duration: number, options: AudioAdjustmentOptions): Track;
 
     /**
      * Stop playback on the track, pausing the currently playing AudioSource.
      *
      * Implementation Notes:
-     * - If `options.delay` is provided, it will be used over `delay`.
      * - Does nothing if there is no playing AudioSource.
      * - For consecutive calls, the earliest time from consecuitive calls will be used.
      * - Saves the playhead position of the AudioSource at the time this method is called,
      *   so that a future `start()` call will resume from the saved position.
      * @param delay optional delay time
-     * @param options adjustment parameters
+     * @param options adjustment parameters for fading out the source
      * @returns {Track} this Track
      */
-    stop(delay?: number, options?: AudioAdjustmentOptions): Track;
+    stop(): Track;
+    stop(delay: number): Track;
+    stop(options: AudioAdjustmentOptions): Track;
 
     /**
      * Loads and immediately starts playback of an audio source.
      *
      * Implementation Notes:
-     * - If this call follows another `playSource()`, or a `start()`, it will call
-     *   `swap()` using the given `options`. Use `swap()` directly for more control.
-     * - This should call `loadSource(path)`, then `swap(options)`
+     * - This is equivalent to calling `loadSource(path)`, then `play(...)`
      * @param path audio source path
-     * @param options adjustment parameters
+     * @param options adjustment parameters for fading in the source
+     * @param delay delay time
+     * @param offset offset into the audio source to start playback from, with the same effects as
+     *               offset from the [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start#offset)
+     * @param duration how long to play before stopping
      * @returns {AudioSourceNode} the new AudioSource
      */
-    playSource(path: string, options?: AudioAdjustmentOptions): AudioSourceNode;
+    playSource(path: string): AudioSourceNode;
+    playSource(path: string, options: AudioAdjustmentOptions): AudioSourceNode;
+    playSource(path: string, delay: number, offset?: number, duration?: number): AudioSourceNode;
+    playSource(
+        path: string,
+        offset: number,
+        duration: number,
+        options: AudioAdjustmentOptions,
+    ): AudioSourceNode;
 
     /**
      * Loads an audio source and returns it. The audio source will be linked to this track, so that
@@ -193,17 +208,24 @@ interface Track {
 
     /**
      * Swaps the currently playing AudioSource with the loaded AudioSource.
+     * If there is no loaded source from calling loadSource(), this method does nothing.
      *
      * Implementation Notes:
-     * - After this method returns, all methods that modify the AudioSource of this Track will
-     *   modify the new source that has been swapped in.
-     * - After this method returns, the internal state of the Track will be restored as if the
-     *   Track has been reconstructed with the previously loaded AudioSourceNode, and then start()
-     *   was called.
+     * - Internally, this method should simply move the playing source onto the fadeout gain, and
+     *   trigger a fadeout automation, then move the loaded source into the playing source, and
+     *   call start() with the appropriate options
+     * - Using `duration` is equivalent to calling `stop(delay + duration)` after this method returns.
+     * @param delay delay time
+     * @param offset offset into the audio source to start playback from, with the same effects as
+     *               offset from the [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start#offset)
+     * @param duration how long to play before stopping
      * @param options swap parameters
      * @returns {Track} this Track
      */
-    swap(options?: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
+    swap(): Track;
+    swap(delay: number, offset?: number, duration?: number): Track;
+    swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
+    swap(offset: number, duration: number, options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
 
     /**
      * Set the volume of this track.
@@ -366,7 +388,33 @@ class TrackSingle implements Track {
         return `TrackSingle[${this.name}] with context ${this.audioContext} and source ${this.source}`;
     }
 
-    public start(delay?: number, options?: AudioAdjustmentOptions, duration?: number): Track {
+    public start(): Track;
+    public start(options: AudioAdjustmentOptions): Track;
+    public start(delay: number, offset?: number, duration?: number): Track;
+    public start(offset: number, duration: number, options: AudioAdjustmentOptions): Track;
+    start(
+        optionsOrDelayOrOffset?: number | AudioAdjustmentOptions,
+        offsetOrDuration?: number,
+        optionsOrDuration?: number | AudioAdjustmentOptions,
+    ): Track {
+        let options: AudioAdjustmentOptions | undefined;
+        let delay: number | undefined;
+        let offset: number | undefined;
+        let duration: number | undefined;
+        if (typeof optionsOrDelayOrOffset == 'number') {
+            if (optionsOrDuration == undefined || typeof optionsOrDuration == 'number') {
+                delay = optionsOrDelayOrOffset;
+                offset = offsetOrDuration;
+                duration = optionsOrDuration;
+            } else {
+                offset = optionsOrDelayOrOffset;
+                duration = offsetOrDuration;
+                options = optionsOrDuration;
+            }
+        } else {
+            options = optionsOrDelayOrOffset;
+        }
+
         // Implicitly load a copy of the same source to call swap
         if (this.playingSource?.isActive && !this.loadedSource) {
             this.loadedSource = this.playingSource.clone();
@@ -375,19 +423,22 @@ class TrackSingle implements Track {
 
         // Swap after loading a source with loadSource()
         if (this.playingSource?.isActive && this.isLoadSourceCalled && this.loadedSource) {
-            const swapOptions = buildOptions(options, defaults.trackSwapDefault);
-
-            this.swap(swapOptions);
-
-            if (duration != undefined) {
-                this.stop((options?.delay ?? delay ?? 0) + duration);
+            if (delay) {
+                this.swap(delay, offset, duration);
+            } else {
+                const swapOptions = buildOptions(options, defaults.trackSwapDefault);
+                if (offset != undefined && duration != undefined) {
+                    this.swap(offset, duration, swapOptions);
+                } else {
+                    this.swap(swapOptions);
+                }
             }
 
             return this;
         }
 
         const startOptions = buildOptions(options, defaults.startImmediate);
-        if (delay != undefined && options?.delay == undefined) {
+        if (delay != undefined) {
             startOptions.delay += delay;
         }
 
@@ -411,7 +462,7 @@ class TrackSingle implements Track {
             return this;
         }
 
-        this.playingSource.start(this._time + startOptions.delay, this.resumeMarker);
+        this.playingSource.start(this._time + startOptions.delay, offset || this.resumeMarker);
         automation(this.audioContext, this.gainPrimaryNode.gain, 1, startOptions, true);
 
         this.nextStopTime = 0;
@@ -424,7 +475,18 @@ class TrackSingle implements Track {
         return this;
     }
 
-    public stop(delay?: number, options?: AudioAdjustmentOptions): Track {
+    public stop(): Track;
+    public stop(delay: number): Track;
+    public stop(options: AudioAdjustmentOptions): Track;
+    stop(delayOrOptions?: number | AudioAdjustmentOptions): Track {
+        let delay: number | undefined;
+        let options: AudioAdjustmentOptions | undefined;
+        if (typeof delayOrOptions == 'number') {
+            delay = delayOrOptions;
+        } else {
+            options = delayOrOptions;
+        }
+
         if (!this.playingSource?.isActive) {
             return this;
         }
@@ -435,7 +497,7 @@ class TrackSingle implements Track {
         }
 
         const stopOptions = buildOptions(options, defaults.stopImmediate);
-        if (delay != undefined && options?.delay == undefined) {
+        if (delay != undefined) {
             stopOptions.delay += delay;
         }
 
@@ -449,8 +511,24 @@ class TrackSingle implements Track {
         return this;
     }
 
-    public playSource(path: string, options?: AudioAdjustmentOptions): AudioSourceNode {
-        console.log(`stub playSource at ${path} with ${options}`);
+    public playSource(path: string): AudioSourceNode;
+    public playSource(path: string, options: AudioAdjustmentOptions): AudioSourceNode;
+    public playSource(path: string, delay: number, offset?: number, duration?: number): AudioSourceNode;
+    public playSource(
+        path: string,
+        offset: number,
+        duration: number,
+        options: AudioAdjustmentOptions,
+    ): AudioSourceNode;
+    playSource(
+        path: string,
+        optionsOrDelayOrOffset?: AudioAdjustmentOptions | number,
+        offsetOrDuration?: number,
+        optionsOrDuration?: number | AudioAdjustmentOptions,
+    ): AudioSourceNode {
+        console.log(
+            `stub playSource at ${path} with ${optionsOrDelayOrOffset}, ${offsetOrDuration}, and ${optionsOrDuration}`,
+        );
         const audioSource = this.loadSource(path);
         this.start(0, options);
         return audioSource;
@@ -461,8 +539,23 @@ class TrackSingle implements Track {
         return new AudioSourceNode(this.audioContext, this.gainNode);
     }
 
-    public swap(options?: TrackSwapOptions | TrackSwapAdvancedOptions): Track {
-        console.log(`stub swap with ${options}`);
+    public swap(): Track;
+    public swap(delay: number, offset?: number, duration?: number): Track;
+    public swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
+    public swap(
+        offset: number,
+        duration: number,
+        options: TrackSwapOptions | TrackSwapAdvancedOptions,
+    ): Track;
+    swap(
+        optionsOrDelayOrOffset?: TrackSwapOptions | TrackSwapAdvancedOptions | number,
+        offsetOrDuration?: number,
+        optionsOrDuration?: number | TrackSwapOptions | TrackSwapAdvancedOptions,
+    ): Track {
+        console.log(
+            `stub swap with ${optionsOrDelayOrOffset}, ${offsetOrDuration}, and ${optionsOrDuration}`
+        );
+
         this.loadedSource = undefined;
         return this;
     }
@@ -594,33 +687,181 @@ class TrackGroup implements Track {
     /**
      * Starts playback of all tracks in this group.
      */
-    public start(delay?: number, options?: AudioAdjustmentOptions, duration?: number): Track {
-        for (const track in this.tracks) {
-            this.tracks[track]?.start(delay, options, duration);
+    public start(): Track;
+    public start(options: AudioAdjustmentOptions): Track;
+    public start(delay: number, offset?: number, duration?: number): Track;
+    public start(offset: number, duration: number, options: AudioAdjustmentOptions): Track;
+    start(
+        optionsOrDelayOrOffset?: number | AudioAdjustmentOptions,
+        offsetOrDuration?: number,
+        optionsOrDuration?: number | AudioAdjustmentOptions,
+    ): Track {
+        let options: AudioAdjustmentOptions | undefined;
+        let delay: number | undefined;
+        let offset: number | undefined;
+        let duration: number | undefined;
+        if (typeof optionsOrDelayOrOffset == 'number') {
+            if (optionsOrDuration == undefined || typeof optionsOrDuration == 'number') {
+                delay = optionsOrDelayOrOffset;
+                offset = offsetOrDuration;
+                duration = optionsOrDuration;
+            } else {
+                offset = optionsOrDelayOrOffset;
+                duration = offsetOrDuration;
+                options = optionsOrDuration;
+            }
+        } else {
+            options = optionsOrDelayOrOffset;
         }
+
+        if (delay) {
+            for (const track in this.tracks) {
+                this.tracks[track]?.start(delay, offset, duration);
+            }
+        } else if (options) {
+            if (offset != undefined && duration != undefined) {
+                for (const track in this.tracks) {
+                    this.tracks[track]?.start(offset, duration, options);
+                }
+            } else {
+                for (const track in this.tracks) {
+                    this.tracks[track]?.start(options);
+                }
+            }
+        } else {
+            for (const track in this.tracks) {
+                this.tracks[track]?.start();
+            }
+        }
+
         return this;
     }
 
     /**
      * Stops playback of all tracks in this group.
      */
-    public stop(delay?: number, options?: AudioAdjustmentOptions): Track {
-        for (const track in this.tracks) {
-            this.tracks[track]?.stop(delay, options);
+    public stop(): Track;
+    public stop(delay: number): Track;
+    public stop(options: AudioAdjustmentOptions): Track;
+    stop(delayOrOptions?: number | AudioAdjustmentOptions): Track {
+        let delay: number | undefined;
+        let options: AudioAdjustmentOptions | undefined;
+        if (typeof delayOrOptions == 'number') {
+            delay = delayOrOptions;
+        } else {
+            options = delayOrOptions;
         }
+
+        if (delay) {
+            for (const track in this.tracks) {
+                this.tracks[track]?.stop(delay);
+            }
+        } else if (options) {
+            for (const track in this.tracks) {
+                this.tracks[track]?.stop(options);
+            }
+        } else {
+            for (const track in this.tracks) {
+                this.tracks[track]?.stop();
+            }
+        }
+
         return this;
     }
 
-    public playSource(path: string, options?: AudioAdjustmentOptions): AudioSourceNode {
-        return this.primaryTrack().playSource(path, options);
+    public playSource(path: string): AudioSourceNode;
+    public playSource(path: string, options: AudioAdjustmentOptions): AudioSourceNode;
+    public playSource(path: string, delay: number, offset?: number, duration?: number): AudioSourceNode;
+    public playSource(
+        path: string,
+        offset: number,
+        duration: number,
+        options: AudioAdjustmentOptions,
+    ): AudioSourceNode;
+    playSource(
+        path: string,
+        optionsOrDelayOrOffset?: AudioAdjustmentOptions | number,
+        offsetOrDuration?: number,
+        optionsOrDuration?: number | AudioAdjustmentOptions,
+    ): AudioSourceNode {
+        let options: AudioAdjustmentOptions | undefined;
+        let delay: number | undefined;
+        let offset: number | undefined;
+        let duration: number | undefined;
+
+        if (typeof optionsOrDelayOrOffset == 'number') {
+            if (optionsOrDuration == undefined || typeof optionsOrDuration == 'number') {
+                delay = optionsOrDelayOrOffset;
+                offset = offsetOrDuration;
+                duration = optionsOrDuration;
+            } else {
+                offset = optionsOrDelayOrOffset;
+                duration = offsetOrDuration;
+                options = optionsOrDuration;
+            }
+        } else {
+            options = optionsOrDelayOrOffset;
+        }
+
+        if (delay) {
+            return this.primaryTrack().playSource(path, delay, offset, duration);
+        } else if (options) {
+            if (offset != undefined && duration != undefined) {
+                return this.primaryTrack().playSource(path, offset, duration, options);
+            } else {
+                return this.primaryTrack().playSource(path, options);
+            }
+        } else {
+            return this.primaryTrack().playSource(path);
+        }
     }
 
     public loadSource(path: string): AudioSourceNode {
         return this.primaryTrack().loadSource(path);
     }
 
-    public swap(options?: TrackSwapOptions | TrackSwapAdvancedOptions): Track {
-        return this.primaryTrack().swap(options);
+    public swap(): Track;
+    public swap(delay: number, offset?: number, duration?: number): Track;
+    public swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
+    public swap(
+        offset: number,
+        duration: number,
+        options: TrackSwapOptions | TrackSwapAdvancedOptions,
+    ): Track;
+    swap(
+        optionsOrDelayOrOffset?: TrackSwapOptions | TrackSwapAdvancedOptions | number,
+        offsetOrDuration?: number,
+        optionsOrDuration?: number | TrackSwapOptions | TrackSwapAdvancedOptions,
+    ): Track {
+        let options: TrackSwapOptions | TrackSwapAdvancedOptions | undefined;
+        let delay: number | undefined;
+        let offset: number | undefined;
+        let duration: number | undefined;
+        if (typeof optionsOrDelayOrOffset == 'number') {
+            if (optionsOrDuration == undefined || typeof optionsOrDuration == 'number') {
+                delay = optionsOrDelayOrOffset;
+                offset = offsetOrDuration;
+                duration = optionsOrDuration;
+            } else {
+                offset = optionsOrDelayOrOffset;
+                duration = offsetOrDuration;
+                options = optionsOrDuration;
+            }
+        } else {
+            options = optionsOrDelayOrOffset;
+        }
+
+        if (delay) {
+            return this.primaryTrack().swap(delay, offset, duration);
+        } else if (options) {
+            if (offset != undefined && duration != undefined) {
+                return this.primaryTrack().swap(offset, duration, options);
+            } else {
+                return this.primaryTrack().swap(options);
+            }
+        } else {
+            return this.primaryTrack().swap();
+        }
     }
 
     /**
