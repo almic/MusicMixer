@@ -1,3 +1,34 @@
+// @ts-check
+
+document.addEventListener(
+    'DOMContentLoaded',
+    () => {
+        const buttons = document.getElementsByTagName('button');
+        for (const button of buttons) {
+            const buttonName = button.type + '<' + button.textContent + '>';
+            const clickFunc = button.onclick;
+            if (!clickFunc) {
+                button.onclick = () => console.log(buttonName + '; no click function');
+                return;
+            }
+            let clickFuncBody = clickFunc.toString() ?? '';
+            if (clickFuncBody) {
+                clickFuncBody = clickFuncBody
+                    .slice(clickFuncBody.indexOf('{') + 1, clickFuncBody.lastIndexOf('}'))
+                    .trim()
+                    .split(';')
+                    .join('\n\t\t');
+
+                button.onclick = (event) => {
+                    console.log(buttonName + ':\n\t\t' + clickFuncBody);
+                    clickFunc.apply(button, event);
+                };
+            }
+        }
+    },
+    false,
+);
+
 async function loadSourceCode(name, path) {
     const sourceCode = await (await fetch(path)).text();
     const elements = document.getElementsByName(name);
@@ -19,7 +50,7 @@ function collapse(self, toggleText, name) {
     }
     elements.forEach((element) => {
         if (element.style.maxHeight) {
-            element.style.maxHeight = null;
+            element.style.maxHeight = '';
         } else {
             element.style.maxHeight = element.scrollHeight + 'px';
         }
