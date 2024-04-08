@@ -433,7 +433,6 @@ class TrackSingle implements Track {
         if (position != -1) {
             this.resumeMarker = position;
         }
-        console.log({ resumeMarker: this.resumeMarker });
 
         const stopOptions = buildOptions(options, defaults.stopImmediate);
         if (delay != undefined && options?.delay == undefined) {
