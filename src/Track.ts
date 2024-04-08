@@ -371,8 +371,8 @@ class TrackSingle implements Track {
     constructor(
         private readonly name: string,
         private readonly audioContext: AudioContext,
-        readonly destination: AudioNode,
-        readonly source: AudioSourceNode,
+        destination: AudioNode,
+        source: AudioSourceNode,
     ) {
         this.gainNode = audioContext.createGain();
         this.gainNode.connect(destination);
@@ -385,7 +385,7 @@ class TrackSingle implements Track {
     }
 
     public toString(): string {
-        return `TrackSingle[${this.name}] with context ${this.audioContext} and source ${this.source}`;
+        return `TrackSingle[${this.name}] with context ${this.audioContext}`;
     }
 
     public start(): Track;
@@ -622,8 +622,8 @@ class TrackGroup implements Track {
     constructor(
         private readonly name: string,
         private readonly audioContext: AudioContext,
-        readonly destination: AudioNode,
-        private readonly source: AudioSourceNode,
+        destination: AudioNode,
+        source: AudioSourceNode,
     ) {
         this.gainNode = audioContext.createGain();
         this.gainNode.connect(destination);
@@ -633,7 +633,7 @@ class TrackGroup implements Track {
     }
 
     toString(): string {
-        return `TrackGroup[${this.name}] with context ${this.audioContext} and source ${this.source}`;
+        return `TrackGroup[${this.name}] with context ${this.audioContext}`;
     }
 
     /**

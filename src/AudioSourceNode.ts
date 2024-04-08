@@ -60,7 +60,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
     readonly numberOfInputs: number = 0;
     readonly numberOfOutputs: number = 1;
 
-    constructor(private readonly audioContext: AudioContext, readonly destination?: AudioNode) {
+    constructor(private readonly audioContext: AudioContext, destination?: AudioNode) {
         this.sourceNode = audioContext.createBufferSource();
         this.gainNode = audioContext.createGain();
         this.stereoPannerNode = audioContext.createStereoPanner();
