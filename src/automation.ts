@@ -70,14 +70,14 @@ export default function automation(
 
     // Stop automations and immediately ramp.
     if (!skipImmediate && Math.abs(difference) < Number.EPSILON) {
-        audioParam.setValueAtTime(currentValue, audioContext.currentTime);
         audioParam.cancelAndHoldAtTime(audioContext.currentTime);
+        audioParam.setValueAtTime(currentValue, audioContext.currentTime);
         audioParam.linearRampToValueAtTime(value, options.delay + audioContext.currentTime);
         return;
     }
 
-    audioParam.setValueAtTime(currentValue, options.delay + audioContext.currentTime);
     audioParam.cancelAndHoldAtTime(options.delay + audioContext.currentTime);
+    audioParam.setValueAtTime(currentValue, options.delay + audioContext.currentTime);
     if (Array.isArray(options.ramp)) {
         const valueCurve = [];
         for (const markiplier of options.ramp) {
@@ -142,7 +142,7 @@ export default function automation(
             // https://www.youtube.com/watch?v=EzWNBmjyv7Y
             audioParam.setValueAtTime(
                 currentValue + difference * (1 - Math.pow(Math.E, -(timeSteps - 1))),
-                timeConstant * (timeSteps - 1) + audioContext.currentTime,
+                timeConstant * (timeSteps - 1) + options.delay + audioContext.currentTime,
             );
             audioParam.linearRampToValueAtTime(
                 value,

@@ -424,17 +424,15 @@ class TrackSingle implements Track {
         // Swap after loading a source with loadSource()
         if (this.playingSource?.isActive && this.isLoadSourceCalled && this.loadedSource) {
             if (delay) {
-                this.swap(delay, offset, duration);
-            } else {
-                const swapOptions = buildOptions(options, defaults.trackSwapDefault);
-                if (offset != undefined && duration != undefined) {
-                    this.swap(offset, duration, swapOptions);
-                } else {
-                    this.swap(swapOptions);
-                }
+                return this.swap(delay, offset, duration);
             }
 
-            return this;
+            const swapOptions = buildOptions(options, defaults.trackSwapOutIn);
+            if (offset != undefined && duration != undefined) {
+                return this.swap(offset, duration, swapOptions);
+            }
+
+            return this.swap(swapOptions);
         }
 
         const startOptions = buildOptions(options, defaults.startImmediate);

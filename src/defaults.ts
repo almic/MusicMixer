@@ -25,7 +25,7 @@ function buildOptions(
     }
 
     if (!options) {
-        return defaultOptions;
+        return structuredClone(defaultOptions);
     }
 
     if ('newSource' in options) {
@@ -34,17 +34,19 @@ function buildOptions(
                 'A caller passed some options of type TrackSwapAdvancedOptions to a MusicMixer function that ' +
                     'only accepts AudioAdjustmentOptions. This is likely a mistake.',
             );
-            return defaultOptions;
+            return structuredClone(defaultOptions);
         }
-        return options;
+        return structuredClone(options);
     }
 
     // Doing this here makes logic easier in the next block
     if ('newSource' in defaultOptions) {
         const fullOptions = structuredClone(defaultOptions);
 
-        fullOptions.oldSource.ramp = options.ramp;
-        fullOptions.newSource.ramp = options.ramp;
+        if (options.ramp) {
+            fullOptions.oldSource.ramp = options.ramp;
+            fullOptions.newSource.ramp = options.ramp;
+        }
 
         if (options.duration) {
             const oldLength = fullOptions.oldSource.delay + fullOptions.oldSource.duration;

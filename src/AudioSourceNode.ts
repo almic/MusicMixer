@@ -143,28 +143,35 @@ class AudioSourceNode implements AudioBufferSourceNode {
     public disconnect(destinationNode: AudioNode, output: number, input: number): void;
     public disconnect(destinationParam: AudioParam): void;
     public disconnect(destinationParam: AudioParam, output: number): void;
-    public disconnect(param1?: number | AudioNode | AudioParam, output?: number, input?: number) {
+    public disconnect(
+        outputOrNodeOrParam?: number | AudioNode | AudioParam,
+        output?: number,
+        input?: number,
+    ) {
         this.throwIfDestroyed();
         // Only diconnect the final gain node, the other nodes will all stay connected
-        if (param1 == undefined) {
+        if (outputOrNodeOrParam == undefined) {
             return this.gainNode.disconnect();
         }
-        if (typeof param1 == 'number') {
-            return this.gainNode.disconnect(param1);
+        if (typeof outputOrNodeOrParam == 'number') {
+            return this.gainNode.disconnect(outputOrNodeOrParam);
         }
-        if (param1 instanceof AudioParam) {
-            if (output != undefined) {
-                return this.gainNode.disconnect(param1, output);
+        if (outputOrNodeOrParam instanceof AudioNode) {
+            if (output != undefined && input != undefined) {
+                return this.gainNode.disconnect(outputOrNodeOrParam, output, input);
+            } else if (output != undefined) {
+                return this.gainNode.disconnect(outputOrNodeOrParam, output);
+            } else {
+                return this.gainNode.disconnect(outputOrNodeOrParam);
             }
-            return this.gainNode.disconnect(param1);
         }
-        if (output != undefined && input != undefined) {
-            return this.gainNode.disconnect(param1, output, input);
+        if (outputOrNodeOrParam instanceof AudioParam) {
+            if (output != undefined) {
+                return this.gainNode.disconnect(outputOrNodeOrParam, output);
+            } else {
+                return this.gainNode.disconnect(outputOrNodeOrParam);
+            }
         }
-        if (output != undefined) {
-            return this.gainNode.disconnect(param1, output);
-        }
-        this.gainNode.disconnect(param1);
     }
 
     async load(path: string): Promise<void> {
