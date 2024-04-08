@@ -20,11 +20,11 @@ function stopMusic() {
 }
 
 function fadeIn() {
-    musicTrack.start(0, { duration: 2 });
+    musicTrack.start({ duration: 2 });
 }
 
 function fadeOut() {
-    musicTrack.stop(0, { duration: 2 });
+    musicTrack.stop({ duration: 2 });
 }
 
 function changeVolume(volume) {
