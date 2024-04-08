@@ -121,44 +121,54 @@ interface Track {
      * Begin playback on the track, starting the loaded AudioSource.
      *
      * Implementation Notes:
-     * - If `options.delay` is provided, it will be used over `delay`.
      * - If this call follows a `loadSource()`, it will call `swap()` using a default OUT_IN swap.
      *   Merge the passed options with the default swap. Use `swap()` directly for more control.
      * - If the AudioSource attached to this Track is already playing, clone it as a new loaded source
      *   and call `swap()`, merging the passed options with the default swap options as above.
-     * - Using `duration` is equivalent to calling `start(delay, options)` and then `stop(delay + duration)`
+     * - Using `duration` is equivalent to calling `stop(delay + duration)` after this method returns.
      * @param delay optional delay time
-     * @param options adjustment parameters
+     * @param options adjustment parameters for fading in the source
+     * @param offset offset into the audio source to start playback from, with the same effects as
+     *               offset from the [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start#offset)
      * @param duration how long to play before stopping
      * @returns {Track} this Track
      */
-    start(delay?: number, options?: AudioAdjustmentOptions, duration?: number): Track;
+    start(): Track;
+    start(options: AudioAdjustmentOptions): Track;
+    start(delay: number, offset?: number, duration?: number): Track;
+    start(offset: number, duration: number, options: AudioAdjustmentOptions): Track;
     /**
      * Stop playback on the track, pausing the currently playing AudioSource.
      *
      * Implementation Notes:
-     * - If `options.delay` is provided, it will be used over `delay`.
      * - Does nothing if there is no playing AudioSource.
      * - For consecutive calls, the earliest time from consecuitive calls will be used.
      * - Saves the playhead position of the AudioSource at the time this method is called,
      *   so that a future `start()` call will resume from the saved position.
      * @param delay optional delay time
-     * @param options adjustment parameters
+     * @param options adjustment parameters for fading out the source
      * @returns {Track} this Track
      */
-    stop(delay?: number, options?: AudioAdjustmentOptions): Track;
+    stop(): Track;
+    stop(delay: number): Track;
+    stop(options: AudioAdjustmentOptions): Track;
     /**
      * Loads and immediately starts playback of an audio source.
      *
      * Implementation Notes:
-     * - If this call follows another `playSource()`, or a `start()`, it will call
-     *   `swap()` using the given `options`. Use `swap()` directly for more control.
-     * - This should call `loadSource(path)`, then `swap(options)`
+     * - This is equivalent to calling `loadSource(path)`, then `play(...)`
      * @param path audio source path
-     * @param options adjustment parameters
+     * @param options adjustment parameters for fading in the source
+     * @param delay delay time
+     * @param offset offset into the audio source to start playback from, with the same effects as
+     *               offset from the [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start#offset)
+     * @param duration how long to play before stopping
      * @returns {AudioSourceNode} the new AudioSource
      */
-    playSource(path: string, options?: AudioAdjustmentOptions): AudioSourceNode;
+    playSource(path: string): AudioSourceNode;
+    playSource(path: string, options: AudioAdjustmentOptions): AudioSourceNode;
+    playSource(path: string, delay: number, offset?: number, duration?: number): AudioSourceNode;
+    playSource(path: string, offset: number, duration: number, options: AudioAdjustmentOptions): AudioSourceNode;
     /**
      * Loads an audio source and returns it. The audio source will be linked to this track, so that
      * calling `start()` will play the last loaded audio source. You may use this to load a second
@@ -170,17 +180,24 @@ interface Track {
     loadSource(path: string): AudioSourceNode;
     /**
      * Swaps the currently playing AudioSource with the loaded AudioSource.
+     * If there is no loaded source from calling loadSource(), this method does nothing.
      *
      * Implementation Notes:
-     * - After this method returns, all methods that modify the AudioSource of this Track will
-     *   modify the new source that has been swapped in.
-     * - After this method returns, the internal state of the Track will be restored as if the
-     *   Track has been reconstructed with the previously loaded AudioSourceNode, and then start()
-     *   was called.
+     * - Internally, this method should simply move the playing source onto the fadeout gain, and
+     *   trigger a fadeout automation, then move the loaded source into the playing source, and
+     *   call start() with the appropriate options
+     * - Using `duration` is equivalent to calling `stop(delay + duration)` after this method returns.
+     * @param delay delay time
+     * @param offset offset into the audio source to start playback from, with the same effects as
+     *               offset from the [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start#offset)
+     * @param duration how long to play before stopping
      * @param options swap parameters
      * @returns {Track} this Track
      */
-    swap(options?: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
+    swap(): Track;
+    swap(delay: number, offset?: number, duration?: number): Track;
+    swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
+    swap(offset: number, duration: number, options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
     /**
      * Set the volume of this track.
      * @param volume gain multiplier
@@ -259,8 +276,6 @@ interface Track {
 declare class TrackSingle implements Track {
     private readonly name;
     private readonly audioContext;
-    readonly destination: AudioNode;
-    readonly source: AudioSourceNode;
     /**
      * The master gain for the track, it is exposed for automation
      */
@@ -311,11 +326,22 @@ declare class TrackSingle implements Track {
      */
     constructor(name: string, audioContext: AudioContext, destination: AudioNode, source: AudioSourceNode);
     toString(): string;
-    start(delay?: number, options?: AudioAdjustmentOptions, duration?: number): Track;
-    stop(delay?: number, options?: AudioAdjustmentOptions): Track;
-    playSource(path: string, options?: AudioAdjustmentOptions): AudioSourceNode;
+    start(): Track;
+    start(options: AudioAdjustmentOptions): Track;
+    start(delay: number, offset?: number, duration?: number): Track;
+    start(offset: number, duration: number, options: AudioAdjustmentOptions): Track;
+    stop(): Track;
+    stop(delay: number): Track;
+    stop(options: AudioAdjustmentOptions): Track;
+    playSource(path: string): AudioSourceNode;
+    playSource(path: string, options: AudioAdjustmentOptions): AudioSourceNode;
+    playSource(path: string, delay: number, offset?: number, duration?: number): AudioSourceNode;
+    playSource(path: string, offset: number, duration: number, options: AudioAdjustmentOptions): AudioSourceNode;
     loadSource(path: string): AudioSourceNode;
-    swap(options?: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
+    swap(): Track;
+    swap(delay: number, offset?: number, duration?: number): Track;
+    swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
+    swap(offset: number, duration: number, options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
     volume(volume: number, options?: AudioAdjustmentOptions): Track;
     loop(enabled: boolean, startSample?: number, endSample?: number): Track;
     jump(enabled: boolean, fromSample?: number, toSample?: number): Track;
@@ -334,8 +360,6 @@ declare class TrackSingle implements Track {
 declare class TrackGroup implements Track {
     private readonly name;
     private readonly audioContext;
-    readonly destination: AudioNode;
-    private readonly source;
     private tracks;
     private readonly gainNode;
     constructor(name: string, audioContext: AudioContext, destination: AudioNode, source: AudioSourceNode);
@@ -367,14 +391,25 @@ declare class TrackGroup implements Track {
     /**
      * Starts playback of all tracks in this group.
      */
-    start(delay?: number, options?: AudioAdjustmentOptions, duration?: number): Track;
+    start(): Track;
+    start(options: AudioAdjustmentOptions): Track;
+    start(delay: number, offset?: number, duration?: number): Track;
+    start(offset: number, duration: number, options: AudioAdjustmentOptions): Track;
     /**
      * Stops playback of all tracks in this group.
      */
-    stop(delay?: number, options?: AudioAdjustmentOptions): Track;
-    playSource(path: string, options?: AudioAdjustmentOptions): AudioSourceNode;
+    stop(): Track;
+    stop(delay: number): Track;
+    stop(options: AudioAdjustmentOptions): Track;
+    playSource(path: string): AudioSourceNode;
+    playSource(path: string, options: AudioAdjustmentOptions): AudioSourceNode;
+    playSource(path: string, delay: number, offset?: number, duration?: number): AudioSourceNode;
+    playSource(path: string, offset: number, duration: number, options: AudioAdjustmentOptions): AudioSourceNode;
     loadSource(path: string): AudioSourceNode;
-    swap(options?: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
+    swap(): Track;
+    swap(delay: number, offset?: number, duration?: number): Track;
+    swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
+    swap(offset: number, duration: number, options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
     /**
      * Adjusts the volume output of this group.
      */

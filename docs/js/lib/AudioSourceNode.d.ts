@@ -32,7 +32,6 @@ import { AudioAdjustmentOptions } from './automation.js';
  */
 declare class AudioSourceNode implements AudioBufferSourceNode {
     private readonly audioContext;
-    readonly destination?: AudioNode | undefined;
     private sourceNode;
     private readonly gainNode;
     private readonly stereoPannerNode;
@@ -50,7 +49,7 @@ declare class AudioSourceNode implements AudioBufferSourceNode {
     private bufferHalfLength;
     readonly numberOfInputs: number;
     readonly numberOfOutputs: number;
-    constructor(audioContext: AudioContext, destination?: AudioNode | undefined);
+    constructor(audioContext: AudioContext, destination?: AudioNode);
     /**
      * Creates and returns a clone of this AudioSourceNode, specifically of just the
      * audio context, buffer, and source path.
