@@ -45,6 +45,25 @@
 
             <div class="flex-container flex-center flex-controls">
                 <button type="button" class="load-button glow-bright" onclick="hideButtons(this);loadMixer()">Click to load MusicMixer</button>
+                <div style="flex-basis:35%" hidden>
+                    <div class="flex-container flex-column flex-center center-text">
+                        <div>
+                            <button type="button" class="select"
+                                    onclick="let e=this.nextElementSibling;e.classList.toggle('expanded') && e.focus()"
+                                    >Pick a sound</button>
+                            <select onclick="this.classList.remove('expanded')"
+                                    onblur="setTimeout(()=>{this.previousElementSibling != document.activeElement && this.classList.remove('expanded')})"
+                                    onchange="this.previousElementSibling.innerText=this.querySelector('option:checked').textContent;changeSound(this.value)"
+                                    style="--size:3"
+                                    size="3">
+                                <option value="03_CyberCity.ogg">Cyber City</option>
+                                <option value="Dungeon4.ogg">Dungeon</option>
+                                <option value="2000_Shop3.ogg">Shop</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-break-row" hidden></div>
                 <button type="button" onclick="startMusic()" hidden>Start Music</button>
                 <button type="button" onclick="stopMusic()" hidden>Stop Music</button>
                 <button type="button" onclick="fadeIn()" hidden>Fade In<br>(Start)</button>

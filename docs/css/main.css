@@ -1,12 +1,13 @@
 /* Font Imports */
 @import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap');
 
-body {
-    font-family: 'Source Code Pro', 'Courier New', Courier, monospace;
+:root {
+    --theme-font: 'Source Code Pro', 'Courier New', Courier, monospace;
+    --theme-color: rgb(30, 221, 255);
 }
 
-:root {
-    --theme-color: rgb(30, 221, 255);
+body {
+    font-family: var(--theme-font);
 }
 
 .center {
@@ -70,6 +71,7 @@ hr {
 }
 
 button {
+    margin: 4px;
     padding: 8px;
     color: inherit;
     cursor: pointer;
@@ -82,6 +84,23 @@ button {
 
 button:hover {
     background-color: color-mix(in srgb, var(--theme-color), transparent 75%);
+}
+
+button.select {
+    position: relative;
+    width: 100%;
+    margin: 4px 0;
+}
+
+button.select::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    top: 45%;
+    right: 1rem;
+    border-top: 0.45rem solid var(--theme-color);
+    border-right: 0.45rem solid transparent;
+    border-left: 0.45rem solid transparent;
 }
 
 input[type='range'] {
@@ -186,6 +205,59 @@ input[type='range']:focus::-ms-fill-upper {
     background: color-mix(in srgb, var(--theme-color), black 85%);
 }
 
+select[size] {
+    --option-padding: 0.5rem;
+    --inside-padding: 0.2rem;
+    color: inherit;
+    font-size: inherit;
+    font-family: inherit;
+    position: relative;
+    appearance: none;
+    outline: none;
+    pointer-events: none;
+    overflow: visible;
+    width: 100%;
+    opacity: 0%;
+    transition: opacity 117ms ease-in;
+    background-color: color-mix(in srgb, var(--theme-color), black 70%);
+    border: 1px solid color-mix(in srgb, var(--theme-color), transparent 25%);
+    border-radius: 0;
+    box-shadow: 0 0 7px color-mix(in srgb, var(--theme-color), transparent 50%);
+}
+
+select[size].expanded {
+    pointer-events: all !important;
+    opacity: 100%;
+}
+
+select[size] option {
+    position: relative;
+    appearance: none;
+    cursor: pointer;
+    color: inherit;
+    font-size: inherit;
+    font-family: inherit;
+    padding: var(--option-padding) 1rem;
+}
+
+select[size] option:nth-child(n + 2) {
+    border-top: 1px solid color-mix(in srgb, var(--theme-color), black 30%);
+}
+
+select[size] option:nth-child(1) {
+    padding-top: 0.7rem;
+}
+
+select[size] option:checked {
+    --bg-color: color-mix(in srgb, var(--theme-color), black 55%);
+    background: linear-gradient(var(--bg-color), var(--bg-color)) !important;
+}
+
+select[size] option:hover {
+    transition: background 117ms ease; /* Because of weirdness, only animate when hovering. Clicking causes browser style flashing */
+    background-color: color-mix(in srgb, var(--theme-color), black 65%);
+}
+
 a {
     color: var(--theme-color);
     text-decoration: none;
@@ -211,6 +283,7 @@ div.flex-container {
 
 div.flex-column {
     flex-direction: column;
+    flex-wrap: nowrap;
 }
 
 div.flex-main {
@@ -427,6 +500,10 @@ ul.list-blocks > li {
     width: 60%;
     margin: 0 20%;
     border: 1px solid color-mix(in srgb, var(--theme-color), transparent 50%);
+}
+
+.source-code-container > button {
+    margin: 0 !important;
 }
 
 .text-glow {

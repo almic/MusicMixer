@@ -175,9 +175,11 @@ interface Track {
      * audio source while one is already playing, it will not be swapped until a call to `start()`
      * or `swap()` is made.
      * @param path audio source path
+     * @param source source to use
      * @returns {AudioSourceNode} the new AudioSource
      */
     loadSource(path: string): AudioSourceNode;
+    loadSource(source: AudioSourceNode): AudioSourceNode;
     /**
      * Swaps the currently playing AudioSource with the loaded AudioSource.
      * If there is no loaded source from calling loadSource(), this method does nothing.
@@ -338,6 +340,7 @@ declare class TrackSingle implements Track {
     playSource(path: string, delay: number, offset?: number, duration?: number): AudioSourceNode;
     playSource(path: string, offset: number, duration: number, options: AudioAdjustmentOptions): AudioSourceNode;
     loadSource(path: string): AudioSourceNode;
+    loadSource(source: AudioSourceNode): AudioSourceNode;
     swap(): Track;
     swap(delay: number, offset?: number, duration?: number): Track;
     swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
@@ -406,6 +409,7 @@ declare class TrackGroup implements Track {
     playSource(path: string, delay: number, offset?: number, duration?: number): AudioSourceNode;
     playSource(path: string, offset: number, duration: number, options: AudioAdjustmentOptions): AudioSourceNode;
     loadSource(path: string): AudioSourceNode;
+    loadSource(source: AudioSourceNode): AudioSourceNode;
     swap(): Track;
     swap(delay: number, offset?: number, duration?: number): Track;
     swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;

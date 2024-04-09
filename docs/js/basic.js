@@ -3,10 +3,11 @@ import MusicMixer from './lib/MusicMixer.js';
 /* Web only; loading after interaction with page */
 let mixer;
 let musicTrack;
+let cache = {};
 function loadMixer() {
     mixer = new MusicMixer();
-    musicTrack = mixer.newTrack('music', 'audio/03_Cybercity.ogg');
     musicTrack.volume(0.5);
+    musicTrack = mixer.newTrack('music');
 }
 
 /* Button functions */
@@ -31,9 +32,17 @@ function changeVolume(volume) {
     musicTrack.volume(volume);
 }
 
+function changeSound(filename) {
+    if (!(filename in cache)) {
+        cache[filename] = mixer.loadSource(`audio/${filename}`);
+    }
+    musicTrack.loadSource(cache[filename]);
+}
+
 /* Web only; bind functions to global context */
 
 window.loadMixer = loadMixer;
+window.changeSound = changeSound;
 window.startMusic = startMusic;
 window.stopMusic = stopMusic;
 window.fadeIn = fadeIn;
