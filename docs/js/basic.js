@@ -6,12 +6,12 @@ let musicTrack;
 function loadMixer() {
     mixer = new MusicMixer();
     musicTrack = mixer.newTrack('music', 'audio/03_Cybercity.ogg');
-    mixer.volume(0.5);
+    musicTrack.volume(0.5);
 }
 
 /* Button functions */
 
-function playMusic() {
+function startMusic() {
     musicTrack.start();
 }
 
@@ -28,13 +28,13 @@ function fadeOut() {
 }
 
 function changeVolume(volume) {
-    mixer.volume(volume);
+    musicTrack.volume(volume);
 }
 
 /* Web only; bind functions to global context */
 
 window.loadMixer = loadMixer;
-window.playMusic = playMusic;
+window.startMusic = startMusic;
 window.stopMusic = stopMusic;
 window.fadeIn = fadeIn;
 window.fadeOut = fadeOut;
