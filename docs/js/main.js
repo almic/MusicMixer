@@ -5,7 +5,7 @@ document.addEventListener(
     () => {
         const buttons = document.getElementsByTagName('button');
         for (const button of buttons) {
-            const buttonName = button.type + '<' + button.textContent + '>';
+            const buttonName = button.type + '<' + button.textContent?.trim() + '>';
             const clickFunc = button.onclick;
             if (!clickFunc) {
                 button.onclick = () => console.log(buttonName + '; no click function');
