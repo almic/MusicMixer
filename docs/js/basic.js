@@ -6,8 +6,8 @@ let musicTrack;
 let cache = {};
 function loadMixer() {
     mixer = new MusicMixer();
-    musicTrack.volume(0.5);
     musicTrack = mixer.newTrack('music');
+    musicTrack.volume(0.5);
 }
 
 /* Button functions */
