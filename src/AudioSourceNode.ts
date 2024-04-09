@@ -60,7 +60,13 @@ class AudioSourceNode implements AudioBufferSourceNode {
     readonly numberOfInputs: number = 0;
     readonly numberOfOutputs: number = 1;
 
-    constructor(private readonly audioContext: AudioContext, destination?: AudioNode) {
+    constructor(private readonly audioContext: AudioContext, readonly owner: any, destination?: AudioNode) {
+        if (typeof owner != 'object') {
+            throw new Error(
+                'Cannot create an AudioSourceNode without specifying an owner. ' +
+                    'The owner is responsible for destroying the AudioSourceNode',
+            );
+        }
         this.sourceNode = audioContext.createBufferSource();
         this.gainNode = audioContext.createGain();
         this.stereoPannerNode = audioContext.createStereoPanner();
@@ -80,11 +86,12 @@ class AudioSourceNode implements AudioBufferSourceNode {
      * audio context, buffer, and source path.
      *
      * No other internal state, like volume, is copied.
+     * @param owner the object that will take ownership of the clone
      * @returns clone
      */
-    public clone(): AudioSourceNode {
+    public clone(owner: any): AudioSourceNode {
         this.throwIfDestroyed();
-        const selfClone = new AudioSourceNode(this.audioContext);
+        const selfClone = new AudioSourceNode(this.audioContext, owner);
         selfClone.path = this.path;
         this.copyBufferTo(selfClone);
         return selfClone;

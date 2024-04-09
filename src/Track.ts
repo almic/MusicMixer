@@ -202,9 +202,11 @@ interface Track {
      * audio source while one is already playing, it will not be swapped until a call to `start()`
      * or `swap()` is made.
      * @param path audio source path
+     * @param source source to use
      * @returns {AudioSourceNode} the new AudioSource
      */
     loadSource(path: string): AudioSourceNode;
+    loadSource(source: AudioSourceNode): AudioSourceNode;
 
     /**
      * Swaps the currently playing AudioSource with the loaded AudioSource.
@@ -417,7 +419,7 @@ class TrackSingle implements Track {
 
         // Implicitly load a copy of the same source to call swap
         if (this.playingSource?.isActive && !this.loadedSource) {
-            this.loadedSource = this.playingSource.clone();
+            this.loadedSource = this.playingSource.clone(this);
             this.isLoadSourceCalled = true;
         }
 
@@ -441,18 +443,27 @@ class TrackSingle implements Track {
         }
 
         // Move the loaded source into the playing source
+        let sourceChanged = false;
         if (this.loadedSource) {
             this.loadedSource.disconnect(); // claim the loadedSource
             if (this.playingSource) {
-                const fadeOut = structuredClone(defaults.automationNatural);
-                this.playingSource.volume(0, fadeOut);
-                this.playingSource.stop(this._time + fadeOut.delay + fadeOut.duration);
-                setTimeout(this.playingSource.destroy, fadeOut.delay + fadeOut.duration);
+                if (this.playingSource.isActive) {
+                    const fadeOut = structuredClone(defaults.automationNatural);
+                    this.playingSource.volume(0, fadeOut);
+                    this.playingSource.stop(this._time + fadeOut.delay + fadeOut.duration);
+                    if (this.playingSource.owner == this) {
+                        setTimeout(this.playingSource.destroy, fadeOut.delay + fadeOut.duration);
+                    }
+                } else if (this.playingSource.owner == this) {
+                    this.playingSource.destroy();
+                }
             }
             this.playingSource = this.loadedSource;
             this.gainPrimaryNode.gain.value = 0;
             this.playingSource.connect(this.gainPrimaryNode);
             this.loadedSource = undefined;
+            this.isLoadSourceCalled = false;
+            sourceChanged = true;
         }
 
         if (!this.playingSource) {
@@ -460,7 +471,10 @@ class TrackSingle implements Track {
             return this;
         }
 
-        this.playingSource.start(this._time + startOptions.delay, offset || this.resumeMarker);
+        this.playingSource.start(
+            this._time + startOptions.delay,
+            offset || (!sourceChanged ? this.resumeMarker : 0),
+        );
         automation(this.audioContext, this.gainPrimaryNode.gain, 1, startOptions, true);
 
         this.nextStopTime = 0;
@@ -559,10 +573,19 @@ class TrackSingle implements Track {
         return audioSource;
     }
 
-    public loadSource(path: string): AudioSourceNode {
-        this.loadedSource = new AudioSourceNode(this.audioContext);
+    public loadSource(path: string): AudioSourceNode;
+    public loadSource(source: AudioSourceNode): AudioSourceNode;
+    public loadSource(pathOrSource: string | AudioSourceNode): AudioSourceNode {
+        if (this.loadedSource?.owner == this) {
+            this.loadedSource.destroy();
+        }
+        if (typeof pathOrSource == 'string') {
+            this.loadedSource = new AudioSourceNode(this.audioContext, this);
+            this.loadedSource.load(pathOrSource);
+        } else {
+            this.loadedSource = pathOrSource;
+        }
         this.isLoadSourceCalled = true;
-        this.loadedSource.load(path);
         return this.loadedSource;
     }
 
@@ -624,7 +647,12 @@ class TrackSingle implements Track {
             originalSource.disconnect(this.gainPrimaryNode);
             originalSource.stop(this._time + swapOptions.oldSource.delay + swapOptions.oldSource.duration);
             automation(this.audioContext, this.gainSecondaryNode.gain, 0, swapOptions.oldSource);
-            setTimeout(originalSource.destroy, swapOptions.oldSource.delay + swapOptions.oldSource.duration);
+            if (originalSource.owner == this) {
+                setTimeout(
+                    originalSource.destroy,
+                    swapOptions.oldSource.delay + swapOptions.oldSource.duration,
+                );
+            }
         }
 
         if (offset != undefined && duration != undefined) {
@@ -895,8 +923,14 @@ class TrackGroup implements Track {
         }
     }
 
-    public loadSource(path: string): AudioSourceNode {
-        return this.primaryTrack().loadSource(path);
+    public loadSource(path: string): AudioSourceNode;
+    public loadSource(source: AudioSourceNode): AudioSourceNode;
+    public loadSource(pathOrSource: string | AudioSourceNode): AudioSourceNode {
+        if (typeof pathOrSource == 'string') {
+            return this.primaryTrack().loadSource(pathOrSource);
+        } else {
+            return this.primaryTrack().loadSource(pathOrSource);
+        }
     }
 
     public swap(): Track;

@@ -26,7 +26,7 @@ class MusicMixer {
      * @returns {AudioSourceNode}
      */
     public loadSource(path?: string): AudioSourceNode {
-        const audioSource = new AudioSourceNode(this.audioContext);
+        const audioSource = new AudioSourceNode(this.audioContext, this);
         if (path) {
             audioSource.load(path);
         }
