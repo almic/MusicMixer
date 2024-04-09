@@ -635,7 +635,12 @@ class TrackSingle implements Track {
     }
 
     public volume(volume: number, options?: AudioAdjustmentOptions): Track {
-        console.log(`stub volume changed to ${volume} with ${options}`);
+        automation(
+            this.audioContext,
+            this.gainNode.gain,
+            volume,
+            buildOptions(options, defaults.automationDefault),
+        );
         return this;
     }
 
@@ -942,7 +947,12 @@ class TrackGroup implements Track {
      * Adjusts the volume output of this group.
      */
     public volume(volume: number, options?: AudioAdjustmentOptions): Track {
-        console.log(`stub volume changed to ${volume} with ${options}`);
+        automation(
+            this.audioContext,
+            this.gainNode.gain,
+            volume,
+            buildOptions(options, defaults.automationDefault),
+        );
         return this;
     }
 
