@@ -10,6 +10,16 @@ body {
     font-family: var(--theme-font);
 }
 
+*:focus-visible {
+    outline: 3px double var(--theme-color);
+    outline-offset: 2px;
+}
+
+::selection {
+    color: color-mix(in srgb, var(--theme-color), white 10%);
+    background: color-mix(in srgb, var(--theme-color), black 60%);
+}
+
 .center {
     width: 80%;
     margin: 0 10%;
@@ -269,7 +279,9 @@ div.clickable:hover {
     cursor: pointer;
 }
 
+a:focus,
 a:hover,
+div.clickable:focus a,
 div.clickable:hover a {
     --lighter: color-mix(in srgb, var(--theme-color), white 15%);
     color: var(--lighter);
@@ -368,6 +380,7 @@ div.glow-responsive {
     transition: background-size 80ms ease-out, box-shadow 80ms ease-out;
 }
 
+div.glow-responsive:focus,
 div.glow-responsive:hover {
     box-shadow: 0 0 7px color-mix(in srgb, var(--theme-color), transparent 75%);
     background-size: 100% 100%;
@@ -401,6 +414,7 @@ div.border-responsive::before {
     transition: background 80ms ease-out;
 }
 
+div.border-responsive:focus::before,
 div.border-responsive:hover::before {
     background-position-y: 80%;
 }
@@ -515,6 +529,7 @@ ul.list-blocks > li {
     transition: text-shadow 1.5s ease-out;
 }
 
+.text-glow-responsive:focus,
 .text-glow-responsive:hover {
     text-shadow: 0 0 4px;
 }
