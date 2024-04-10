@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <style>
+        body {
+            background: #000;
+            color: #f0f8ff;
+        }
+    </style>
+    <link rel="stylesheet" href="css/page.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
+    <script src="js/soundscape.js" type="module"></script>
+
+    <script src="js/main.js"></script>
+
+    <!-- Code highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/night-owl.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+
+</head>
+
+<body>
+
+    <div class="center page-box page-style flex-container">
+        <div class="flex-aside center-text">
+            <p><a href="index.html">Homepage</a></p>
+            <p class="flex-column-to-bottom"><a href="#">Scroll to top</a></p>
+        </div>
+        <div class="flex-main">
+            <h1 id="title" class="center-text text-glow-responsive">
+                Soundscapes
+            </h1>
+            <p class="center-text text-glow">
+                Play and loop multiple sounds on a track group.
+            </p>
+            <p class="moz-only center-text">
+                <span class="pop">
+                Remember: For the best experience, use the latest version of Chrome. Firefox is 7 years late.
+                </span>
+            </p>
+            <hr>
+
+            <div class="flex-container flex-center flex-controls">
+                <button type="button" class="load-button glow-bright" onclick="hideButtons(this);loadMixer()">Click to load MusicMixer</button>
+
+
+            </div>
+
+            <hr>
+            <div class="source-code-container">
+                <button type="button" class="collapse-button" onclick="collapse(this, 'Hide Source', 'code')">Show Source</button>
+                <div name="code" class="collapse-content">
+                    <pre class="m-0"><code name="source-code" class="language-javascript">Source code!!</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+loadSourceCode('source-code', 'js/soundscape.js')
+    .catch((reason) => { console.error(reason); })
+    .finally(() => { hljs.highlightAll(); });
+</script>
+
+</body>
+
+</html>
