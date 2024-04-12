@@ -329,7 +329,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
      * @returns `true` if the source has been started, and has probably not yet ended.
      */
     get isActive() {
-        return this.isStarted && !this.isEnded;
+        return !this._isDestroyed && this.isStarted && !this.isEnded;
     }
 
     /**
