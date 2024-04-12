@@ -35,6 +35,10 @@ async function loadSourceCode(name, path) {
     elements.forEach((element) => (element.innerHTML = sourceCode));
 }
 
+/**
+ * Toggles collapsed state on the named elements, and toggles the text on the
+ * given element
+ */
 function collapse(self, toggleText, name) {
     self.classList.toggle('collapse-active');
     if (!self.getAttribute('data-toggle-text')) {
@@ -67,3 +71,10 @@ function hideButtons(button) {
         button.removeAttribute('hidden');
     }
 }
+
+//@ts-ignore
+window.collapse = collapse;
+//@ts-ignore
+window.hideButtons = hideButtons;
+//@ts-ignore
+window.loadSourceCode = loadSourceCode;
