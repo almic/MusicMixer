@@ -40,13 +40,8 @@ async function loadSourceCode(name, path) {
  * given element
  */
 function collapse(self, toggleText, name) {
+    toggleText(self, toggleText);
     self.classList.toggle('collapse-active');
-    if (!self.getAttribute('data-toggle-text')) {
-        self.setAttribute('data-toggle-text', toggleText);
-    }
-    const text = self.getAttribute('data-toggle-text');
-    self.setAttribute('data-toggle-text', self.innerHTML);
-    self.innerHTML = text;
     const elements = document.getElementsByName(name);
     if (!elements.length) {
         console.warn(`Tried to toggle collapsible elements named ${name}, but it wasn't on the page!`);
@@ -59,6 +54,18 @@ function collapse(self, toggleText, name) {
             element.style.maxHeight = element.scrollHeight + 'px';
         }
     });
+}
+
+/**
+ * Toggles the text on the given element
+ */
+export function toggleText(element, toggleText) {
+    if (!element.getAttribute('data-toggle-text')) {
+        element.setAttribute('data-toggle-text', toggleText);
+    }
+    const text = element.getAttribute('data-toggle-text');
+    element.setAttribute('data-toggle-text', element.innerHTML);
+    element.innerHTML = text;
 }
 
 /**
@@ -78,3 +85,5 @@ window.collapse = collapse;
 window.hideButtons = hideButtons;
 //@ts-ignore
 window.loadSourceCode = loadSourceCode;
+//@ts-ignore
+window.toggleText = toggleText;
