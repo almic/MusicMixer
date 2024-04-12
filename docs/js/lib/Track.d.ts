@@ -181,6 +181,15 @@ interface Track {
     loadSource(path: string): AudioSourceNode;
     loadSource(source: AudioSourceNode): AudioSourceNode;
     /**
+     * Retrieve the currently active source, the one that was most recently playing.
+     */
+    getActiveSource(): AudioSourceNode | null;
+    /**
+     * Retrieve the currently loaded source, the one that will start playing the next time start or
+     * swap is called.
+     */
+    getLoadedSource(): AudioSourceNode | null;
+    /**
      * Swaps the currently playing AudioSource with the loaded AudioSource.
      * If there is no loaded source from calling loadSource(), this method does nothing.
      *
@@ -326,7 +335,7 @@ declare class TrackSingle implements Track {
      * @param destination
      * @param source
      */
-    constructor(name: string, audioContext: AudioContext, destination: AudioNode, source: AudioSourceNode);
+    constructor(name: string, audioContext: AudioContext, destination: AudioNode, source?: AudioSourceNode);
     toString(): string;
     start(): Track;
     start(options: AudioAdjustmentOptions): Track;
@@ -341,6 +350,8 @@ declare class TrackSingle implements Track {
     playSource(path: string, offset: number, duration: number, options: AudioAdjustmentOptions): AudioSourceNode;
     loadSource(path: string): AudioSourceNode;
     loadSource(source: AudioSourceNode): AudioSourceNode;
+    getActiveSource(): AudioSourceNode | null;
+    getLoadedSource(): AudioSourceNode | null;
     swap(): Track;
     swap(delay: number, offset?: number, duration?: number): Track;
     swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
@@ -390,7 +401,9 @@ declare class TrackGroup implements Track {
      * @param source loaded audio source
      * @returns {Track} the new Track
      */
-    newTrack(name: string, path?: string, source?: AudioSourceNode): Track;
+    newTrack(name: string): Track;
+    newTrack(name: string, path: string): Track;
+    newTrack(name: string, source: AudioSourceNode): Track;
     /**
      * Starts playback of all tracks in this group.
      */
@@ -410,6 +423,8 @@ declare class TrackGroup implements Track {
     playSource(path: string, offset: number, duration: number, options: AudioAdjustmentOptions): AudioSourceNode;
     loadSource(path: string): AudioSourceNode;
     loadSource(source: AudioSourceNode): AudioSourceNode;
+    getActiveSource(): AudioSourceNode | null;
+    getLoadedSource(): AudioSourceNode | null;
     swap(): Track;
     swap(delay: number, offset?: number, duration?: number): Track;
     swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
