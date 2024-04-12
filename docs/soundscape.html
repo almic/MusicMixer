@@ -36,6 +36,8 @@
             </h1>
             <p class="center-text text-glow">
                 Play and loop multiple sounds on a track group.
+                <br>
+                This soundscape combines four sounds to imitate being in a cave at night while a storm blows outside.
             </p>
             <p class="moz-only center-text">
                 <span class="pop">
@@ -46,8 +48,53 @@
 
             <div class="flex-container flex-center flex-controls">
                 <button type="button" class="load-button glow-bright" onclick="hideButtons(this);loadMixer()">Click to load MusicMixer</button>
-
-
+                <div style="flex-basis:35%" hidden>
+                    <div class="flex-container flex-column flex-center center-text">
+                        <span>Group Volume</span>
+                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="changeVolume('ambience', Number(this.value))">
+                    </div>
+                </div>
+                <div class="flex-break-row" hidden></div>
+                <div style="flex-basis:20%;flex-grow:1" hidden>
+                    <div style="height:5rem" class="flex-container flex-column flex-center">
+                        <button type="button"
+                            data-track="storm"
+                            data-toggle-text="Stop Storm"
+                            onclick="toggleTrack(this)"
+                            >Start Storm</button>
+                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="changeVolume('storm', Number(this.value))">
+                    </div>
+                </div>
+                <div style="flex-basis:20%;flex-grow:1" hidden>
+                    <div style="height:5rem" class="flex-container flex-column flex-center">
+                        <button type="button"
+                            data-track="rain"
+                            data-toggle-text="Stop Rain"
+                            onclick="toggleTrack(this)"
+                            >Start Rain</button>
+                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="changeVolume('rain', Number(this.value))">
+                    </div>
+                </div>
+                <div style="flex-basis:20%;flex-grow:1" hidden>
+                    <div style="height:5rem" class="flex-container flex-column flex-center">
+                        <button type="button"
+                            data-track="wildlife"
+                            data-toggle-text="Remove Wildlife"
+                            onclick="toggleTrack(this)"
+                            >Add Wildlife</button>
+                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="changeVolume('wildlife', Number(this.value))">
+                    </div>
+                </div>
+                <div style="flex-basis:20%;flex-grow:1" hidden>
+                    <div style="height:5rem" class="flex-container flex-column flex-center">
+                        <button type="button"
+                            data-track="cave"
+                            data-toggle-text="Undrip Cave"
+                            onclick="toggleTrack(this)"
+                            >Drip Cave</button>
+                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="changeVolume('cave', Number(this.value))">
+                    </div>
+                </div>
             </div>
 
             <hr>
