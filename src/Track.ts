@@ -209,6 +209,17 @@ interface Track {
     loadSource(source: AudioSourceNode): AudioSourceNode;
 
     /**
+     * Retrieve the currently active source, the one that was most recently playing.
+     */
+    getActiveSource(): AudioSourceNode | null;
+
+    /**
+     * Retrieve the currently loaded source, the one that will start playing the next time start or
+     * swap is called.
+     */
+    getLoadedSource(): AudioSourceNode | null;
+
+    /**
      * Swaps the currently playing AudioSource with the loaded AudioSource.
      * If there is no loaded source from calling loadSource(), this method does nothing.
      *
@@ -374,7 +385,7 @@ class TrackSingle implements Track {
         private readonly name: string,
         private readonly audioContext: AudioContext,
         destination: AudioNode,
-        source: AudioSourceNode,
+        source?: AudioSourceNode,
     ) {
         this.gainNode = audioContext.createGain();
         this.gainNode.connect(destination);
@@ -589,6 +600,14 @@ class TrackSingle implements Track {
         return this.loadedSource;
     }
 
+    public getActiveSource(): AudioSourceNode | null {
+        return this.playingSource ?? null;
+    }
+
+    public getLoadedSource(): AudioSourceNode | null {
+        return this.loadedSource ?? null;
+    }
+
     public swap(): Track;
     public swap(delay: number, offset?: number, duration?: number): Track;
     public swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
@@ -772,21 +791,26 @@ class TrackGroup implements Track {
      * @param source loaded audio source
      * @returns {Track} the new Track
      */
-    public newTrack(name: string, path?: string, source?: AudioSourceNode): Track {
+    public newTrack(name: string): Track;
+    public newTrack(name: string, path: string): Track;
+    public newTrack(name: string, source: AudioSourceNode): Track;
+    public newTrack(name: string, pathOrSource?: string | AudioSourceNode): Track {
         if (name == this.name) {
             throw new Error(`Cannot use name "${name}" as it is the name of this group track`);
         }
         if (Object.keys(this.tracks).includes(name)) {
             throw new Error(`Cannot use name "${name}" as it already exists in this group track`);
         }
-        let audioSource = source;
-        if (!audioSource) {
-            audioSource = new AudioSourceNode(this.audioContext, this.gainNode);
-            if (path) {
-                audioSource.load(path);
+
+        const track = new TrackSingle(name, this.audioContext, this.gainNode);
+        if (pathOrSource != undefined) {
+            if (typeof pathOrSource == 'string') {
+                track.loadSource(pathOrSource);
+            } else {
+                track.loadSource(pathOrSource);
             }
         }
-        const track = new TrackSingle(name, this.audioContext, this.gainNode, audioSource);
+
         this.tracks[name] = track;
         return track;
     }
@@ -931,6 +955,14 @@ class TrackGroup implements Track {
         } else {
             return this.primaryTrack().loadSource(pathOrSource);
         }
+    }
+
+    public getActiveSource(): AudioSourceNode | null {
+        return this.primaryTrack().getActiveSource();
+    }
+
+    public getLoadedSource(): AudioSourceNode | null {
+        return this.primaryTrack().getLoadedSource();
     }
 
     public swap(): Track;
