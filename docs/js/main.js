@@ -9,7 +9,7 @@ document.addEventListener(
             const clickFunc = button.onclick;
             if (!clickFunc) {
                 button.onclick = () => console.log(buttonName + '; no click function');
-                return;
+                continue;
             }
             let clickFuncBody = clickFunc.toString() ?? '';
             if (clickFuncBody) {
@@ -39,8 +39,8 @@ async function loadSourceCode(name, path) {
  * Toggles collapsed state on the named elements, and toggles the text on the
  * given element
  */
-function collapse(self, toggleText, name) {
-    toggleText(self, toggleText);
+function collapse(self, text, name) {
+    toggleText(self, text);
     self.classList.toggle('collapse-active');
     const elements = document.getElementsByName(name);
     if (!elements.length) {
