@@ -5,6 +5,13 @@ document.addEventListener(
     () => {
         const buttons = document.getElementsByTagName('button');
         for (const button of buttons) {
+            const dataCollapse = button.getAttribute('data-collapse');
+            if (dataCollapse) {
+                const [target, text] = dataCollapse.split(',');
+                if (target && text) {
+                    button.onclick = () => collapse(button, text, target);
+                }
+            }
             const buttonName = button.type + '<' + button.textContent?.trim() + '>';
             const clickFunc = button.onclick;
             if (!clickFunc) {

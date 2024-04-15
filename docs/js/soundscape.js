@@ -50,12 +50,12 @@ function toggleTrack(self) {
             track.start({ duration: 2 });
             self.setAttribute('data-playing', 'true');
             toggleText(self);
-            track.getActiveSource().onended = () => {
+            track.getActiveSource().addEventListener('ended', () => {
                 if (self.getAttribute('data-playing') == 'true') {
                     self.setAttribute('data-playing', 'false');
                     toggleText(self);
                 }
-            };
+            });
         }
     }
 }
