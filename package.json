@@ -9,7 +9,7 @@
     "scripts": {
         "build": "npm run format && tsc -b && npm run copyDistToDocs",
         "start": "onchange --await-write-finish 1500 \"src/**/*.ts\" \"src/**/*.js\" -- npm run build",
-        "format": "prettier src/**/*.ts src/**/*.js test/**/*.ts test/**/*.js --write",
+        "format": "prettier src/**/*.ts src/**/*.js test/**/*.ts test/**/*.js --write --no-error-on-unmatched-pattern",
         "copyDistToDocs": "xcopy .\\dist\\*.js .\\docs\\js\\lib /e /y /v /i /f && xcopy .\\dist\\*.d.ts .\\docs\\js\\lib /e /y /v /i /f",
         "test": "node test/build/index.js"
     },
@@ -32,14 +32,17 @@
         "@types/nw.js": "^0.13.21",
         "@types/semver": "6.2.0",
         "onchange": "^7.1.0",
-        "prettier": "1.19.1",
+        "prettier": "^3.2.5",
         "semver": "6.3.1",
         "typescript": "^5.4.3"
     },
     "prettier": {
         "arrowParens": "always",
+        "bracketSameLine": false,
         "bracketSpacing": true,
         "endOfLine": "crlf",
+        "experimentalTernaries": false,
+        "htmlWhitespaceSensitivity": "ignore",
         "printWidth": 110,
         "singleQuote": true,
         "semi": true,

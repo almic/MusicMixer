@@ -40,24 +40,21 @@ console.log(`2 > 1  : ${compare32float(2, 1) > 0}`);
 console.log(`1 == 1 : ${compare32float(1, 1) == 0}`);
 
 console.log(
-    `${MAX_32_FLOAT_INT} == ${MAX_32_FLOAT_INT + 1} : ${compare32float(
-        MAX_32_FLOAT_INT,
-        MAX_32_FLOAT_INT + 1,
-    ) == 0}`,
+    `${MAX_32_FLOAT_INT} == ${MAX_32_FLOAT_INT + 1} : ${
+        compare32float(MAX_32_FLOAT_INT, MAX_32_FLOAT_INT + 1) == 0
+    }`,
 );
 
 console.log(
-    `${-MAX_32_FLOAT_INT} == ${-MAX_32_FLOAT_INT + 1} : ${compare32float(
-        -MAX_32_FLOAT_INT,
-        -MAX_32_FLOAT_INT + 1,
-    ) == 0}`,
+    `${-MAX_32_FLOAT_INT} == ${-MAX_32_FLOAT_INT + 1} : ${
+        compare32float(-MAX_32_FLOAT_INT, -MAX_32_FLOAT_INT + 1) == 0
+    }`,
 );
 
 console.log(
-    `${-MAX_32_FLOAT_INT - 1} == ${-MAX_32_FLOAT_INT} : ${compare32float(
-        -MAX_32_FLOAT_INT - 1,
-        -MAX_32_FLOAT_INT,
-    ) == 0}`,
+    `${-MAX_32_FLOAT_INT - 1} == ${-MAX_32_FLOAT_INT} : ${
+        compare32float(-MAX_32_FLOAT_INT - 1, -MAX_32_FLOAT_INT) == 0
+    }`,
 );
 
 console.log(`${MAX_32_INT} to 32 float = ${convert32float(MAX_32_INT)}`);
@@ -65,8 +62,9 @@ console.log(`${MAX_SAFE_INTEGER} to 32 float = ${convert32float(MAX_SAFE_INTEGER
 
 console.log('\nConclusions:');
 console.log(
-    `Effective integer range with 32Float: ${-MAX_32_FLOAT_INT} to ${MAX_32_FLOAT_INT}, ${MAX_32_FLOAT_INT *
-        2} range.`,
+    `Effective integer range with 32Float: ${-MAX_32_FLOAT_INT} to ${MAX_32_FLOAT_INT}, ${
+        MAX_32_FLOAT_INT * 2
+    } range.`,
 );
 console.log(`Best 44.1k supported duration: ${(MAX_32_FLOAT_INT * 2) / 44100} seconds.`);
 console.log(`Best 88.2k supported duration: ${(MAX_32_FLOAT_INT * 2) / 88100} seconds.`);

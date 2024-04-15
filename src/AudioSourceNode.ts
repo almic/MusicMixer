@@ -263,9 +263,12 @@ class AudioSourceNode implements AudioBufferSourceNode {
         }
 
         if (when && when > this.audioContext.currentTime) {
-            setTimeout(() => {
-                this._isEnded = false;
-            }, 1000 * (this.audioContext.currentTime - when));
+            setTimeout(
+                () => {
+                    this._isEnded = false;
+                },
+                1000 * (this.audioContext.currentTime - when),
+            );
         } else {
             this._isEnded = false;
         }
