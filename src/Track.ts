@@ -370,6 +370,25 @@ class TrackSingle implements Track {
     private isLoadSourceCalled: boolean = false;
 
     /**
+     * Tracks calls to the start method such that deferred start calls, using
+     * the 'loaded' event listener, will abort on subsequent calls to start if
+     * the time has been updated.
+     *
+     * This is necessary for the start method because future calls to start must
+     * not be replaced by a deferred call that happened to execute after it
+     * completed. If start is called many times, and they are all deferred, the
+     * latest one should make the call as if it was the only call.
+     */
+    private lastStartCallTime: number = 0;
+
+    /**
+     * Tracks calls to the loop method such that deferred loop calls, using the
+     * 'loaded' event listener, will abort on subsequent calls to loop if the
+     * time has been updated.
+     */
+    private lastLoopCallTime: number = 0;
+
+    /**
      * Implementation Notes:
      * - If the given AudioSourceNode has outgoing connections, they will be disconnected at the
      *   time this Track begins playback of the AudioSourceNode.
@@ -428,6 +447,8 @@ class TrackSingle implements Track {
             options = optionsOrDelayOrOffset;
         }
 
+        this.lastStartCallTime = this.audioContext.currentTime;
+
         // Implicitly load a copy of the same source to call swap
         if (this.playingSource?.isActive && !this.loadedSource) {
             this.loadedSource = this.playingSource.clone(this);
@@ -482,10 +503,39 @@ class TrackSingle implements Track {
             return this;
         }
 
-        this.playingSource.start(
-            this._time + startOptions.delay,
-            offset || (!sourceChanged ? this.resumeMarker : 0),
-        );
+        if (this.playingSource.isDestroyed) {
+            if (this.playingSource.owner == this) {
+                console.warn(`Track's playingSource was unexpectedly destroyed. This is likely a mistake.`);
+            }
+            this.playingSource = undefined;
+            return this;
+        }
+
+        if (!this.playingSource.isLoaded) {
+            const self = this;
+            const expectedCallTime = this.lastStartCallTime;
+            this.playingSource.addEventListener(
+                'loaded',
+                (event) => {
+                    if (
+                        !event.target.isDestroyed &&
+                        self.lastStartCallTime - expectedCallTime < Number.EPSILON
+                    ) {
+                        event.target.start(
+                            self._time + startOptions.delay,
+                            offset || (!sourceChanged ? self.resumeMarker : 0),
+                        );
+                    }
+                },
+                { once: true },
+            );
+        } else {
+            this.playingSource.start(
+                this._time + startOptions.delay,
+                offset || (!sourceChanged ? this.resumeMarker : 0),
+            );
+        }
+
         automation(this.audioContext, this.gainPrimaryNode.gain, 1, startOptions, true);
 
         this.nextStopTime = 0;
@@ -692,7 +742,38 @@ class TrackSingle implements Track {
     }
 
     public loop(enabled: boolean, startSample?: number, endSample?: number): Track {
-        console.log(`stub loop ${enabled} in range ${startSample} to ${endSample}`);
+        const source = this.playingSource ?? this.loadedSource;
+        this.lastLoopCallTime = this.audioContext.currentTime;
+        if (source && !source.isDestroyed) {
+            if (!source.isLoaded) {
+                const self = this;
+                const expectedCallTime = this.lastLoopCallTime;
+                source.addEventListener(
+                    'loaded',
+                    (event) => {
+                        if (
+                            !event.target.isDestroyed &&
+                            self.lastLoopCallTime - expectedCallTime < Number.EPSILON
+                        ) {
+                            self.loop(enabled, startSample, endSample);
+                        }
+                    },
+                    {
+                        once: true,
+                    },
+                );
+                return this;
+            }
+            source.loop = enabled;
+            if (source.buffer?.sampleRate) {
+                if (startSample != undefined) {
+                    source.loopStart = startSample / source.buffer?.sampleRate;
+                }
+                if (endSample != undefined) {
+                    source.loopEnd = endSample;
+                }
+            }
+        }
         return this;
     }
 
