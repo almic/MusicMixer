@@ -1,5 +1,45 @@
 import { AudioAdjustmentOptions } from './automation.js';
 
+class AudioSourceNodeEvent {
+    #propagationStopped = false;
+
+    protected constructor(
+        readonly type: string,
+        readonly target: AudioSourceNode,
+        readonly time: number,
+    ) {}
+
+    public stopPropagation() {
+        this.#propagationStopped = true;
+    }
+
+    public get propagationStopped() {
+        return this.#propagationStopped;
+    }
+}
+
+class EventEnded extends AudioSourceNodeEvent {
+    constructor(target: AudioSourceNode, time: number) {
+        super('ended', target, time);
+    }
+}
+
+class EventLoaded extends AudioSourceNodeEvent {
+    constructor(
+        target: AudioSourceNode,
+        time: number,
+        readonly buffer: AudioBuffer,
+    ) {
+        super('loaded', target, time);
+    }
+}
+
+type Listener<E extends AudioSourceNodeEvent> = {
+    handleEvent(this: AudioSourceNode, event: E): void;
+    options: AddEventListenerOptions;
+    removed: boolean;
+};
+
 /**
  * AudioSourceNode, interchangeable with the standard AudioBufferSourceNode.
  *
@@ -31,7 +71,7 @@ import { AudioAdjustmentOptions } from './automation.js';
  * the fact that we cannot share buffers between Audio objects; they must load an audio source
  * every time they are constructed. Because of this, we cannot use Audio() objects.
  */
-class AudioSourceNode implements AudioBufferSourceNode {
+class AudioSourceNode {
     private sourceNode: AudioBufferSourceNode;
     private readonly gainNode: GainNode;
     private readonly stereoPannerNode: StereoPannerNode;
@@ -41,13 +81,14 @@ class AudioSourceNode implements AudioBufferSourceNode {
     private _isStarted: boolean = false;
     private _isStopped: boolean = false;
     private _isEnded: boolean = false;
-    private onEndedMainCallback: (event: Event) => void = (event) => {
+    private _isLoaded: boolean = false;
+    private onLoadedListeners: Listener<EventLoaded>[] = [];
+    private onEndedListeners: Listener<EventEnded>[] = [];
+
+    private onEndedInternalCallback: (event: Event) => void = () => {
         this._isEnded = true;
-        if (this.onEndedCallback) {
-            this.onEndedCallback.call(this, event);
-        }
+        this.dispatchEvent(new EventEnded(this, this.audioContext.currentTime));
     };
-    private onEndedCallback: null | ((event: Event) => void) = null;
 
     // Nodes necessary for tracking position
     private readonly analyser: AnalyserNode;
@@ -60,7 +101,11 @@ class AudioSourceNode implements AudioBufferSourceNode {
     readonly numberOfInputs: number = 0;
     readonly numberOfOutputs: number = 1;
 
-    constructor(private readonly audioContext: AudioContext, readonly owner: any, destination?: AudioNode) {
+    constructor(
+        private readonly audioContext: AudioContext,
+        readonly owner: any,
+        destination?: AudioNode,
+    ) {
         if (typeof owner != 'object') {
             throw new Error(
                 'Cannot create an AudioSourceNode without specifying an owner. ' +
@@ -78,7 +123,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
             this.connect(destination);
         }
 
-        this.sourceNode.onended = this.onEndedMainCallback;
+        this.sourceNode.onended = this.onEndedInternalCallback;
     }
 
     /**
@@ -187,6 +232,8 @@ class AudioSourceNode implements AudioBufferSourceNode {
         const audioFile = await fetch(this.path);
         const decodedBuffer = await this.audioContext.decodeAudioData(await audioFile.arrayBuffer());
         this.buffer = decodedBuffer;
+        this._isLoaded = true;
+        this.dispatchEvent(new EventLoaded(this, this.audioContext.currentTime, decodedBuffer));
     }
 
     volume(volume: number, options?: AudioAdjustmentOptions): AudioSourceNode {
@@ -232,7 +279,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
 
         if (this._isStarted || this._isStopped) {
             const buffer: AudioBuffer | null = this.sourceNode.buffer;
-            this.sourceNode.onended = this.onEndedCallback;
+            this.sourceNode.onended = null;
             this.stop(when);
             this._isStopped = false;
             const oldSourceNode = this.sourceNode;
@@ -250,7 +297,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
             }
             this.sourceNode = this.audioContext.createBufferSource();
             this.sourceNode.buffer = buffer;
-            this.sourceNode.onended = this.onEndedMainCallback;
+            this.sourceNode.onended = this.onEndedInternalCallback;
             if (this.sourceNode.buffer && !this.splitter) {
                 console.warn(
                     `An AudioSourceNode appears to be in an invalid state, as a buffer has been ` +
@@ -359,20 +406,47 @@ class AudioSourceNode implements AudioBufferSourceNode {
     }
 
     /**
+     * In the case that the {@link load()} method has never completed, this will be `false`,
+     * regardless of the state of the internal {@link AudioBuffer}.
+     * @returns `true` if the method {@link load()} has completed successfully
+     */
+    get isLoaded() {
+        return this._isLoaded;
+    }
+
+    /**
      * @returns `true` if this AudioSourceNode has been destroyed
      */
     get isDestroyed() {
         return this._isDestroyed;
     }
 
-    get onended() {
+    get onended(): null | ((this: AudioSourceNode, event: EventEnded) => void) {
         this.throwIfDestroyed();
-        return this.onEndedCallback;
+        return this.onEndedListeners[0]?.handleEvent ?? null;
     }
 
-    set onended(callback) {
+    set onended(listener: null | ((this: AudioSourceNode, event: EventEnded) => void)) {
         this.throwIfDestroyed();
-        this.onEndedCallback = callback;
+        if (listener == null || listener == undefined) {
+            this.onEndedListeners = [];
+        } else if (typeof listener == 'function') {
+            this.onEndedListeners = [AudioSourceNode._makeListener(listener, { capture: false })];
+        }
+    }
+
+    get onloaded(): null | ((this: AudioSourceNode, event: EventLoaded) => void) {
+        this.throwIfDestroyed();
+        return this.onLoadedListeners[0]?.handleEvent ?? null;
+    }
+
+    set onloaded(listener: null | ((this: AudioSourceNode, event: EventLoaded) => void)) {
+        this.throwIfDestroyed();
+        if (listener == null || listener == undefined) {
+            this.onLoadedListeners = [];
+        } else if (typeof listener == 'function') {
+            this.onLoadedListeners = [AudioSourceNode._makeListener(listener, { capture: false })];
+        }
     }
 
     get buffer(): AudioBuffer | null {
@@ -504,6 +578,7 @@ class AudioSourceNode implements AudioBufferSourceNode {
      */
     public destroy(): void {
         this._isDestroyed = true;
+        // this.owner = null; // Deliberately retain the owner reference, so users can know what object should be responsible
         if (this.sourceNode) {
             this.sourceNode.stop();
             this.sourceNode.disconnect();
@@ -591,27 +666,153 @@ class AudioSourceNode implements AudioBufferSourceNode {
         return this.sourceNode.channelInterpretation;
     }
 
-    addEventListener(
+    addEventListener<E extends EventLoaded>(
+        type: 'loaded',
+        listener: (this: AudioSourceNode, event: E) => void,
+        options?: boolean | AddEventListenerOptions,
+    ): void;
+    addEventListener<E extends EventEnded>(
         type: 'ended',
-        listener: (this: AudioBufferSourceNode, ev: Event) => any,
+        listener: (this: AudioSourceNode, event: E) => void,
+        options?: boolean | AddEventListenerOptions,
+    ): void;
+    addEventListener(
+        type: 'ended' | 'loaded',
+        listener: (this: AudioSourceNode, event: AudioSourceNodeEvent) => void,
         options?: boolean | AddEventListenerOptions,
     ): void {
         this.throwIfDestroyed();
-        this.sourceNode.addEventListener(type, listener, options);
+
+        let listenerList;
+        switch (type) {
+            case 'ended': {
+                listenerList = this.onEndedListeners;
+                break;
+            }
+            case 'loaded': {
+                listenerList = this.onLoadedListeners;
+                break;
+            }
+            default: {
+                return;
+            }
+        }
+
+        let capture = typeof options == 'boolean' ? options : options?.capture ?? false;
+        let once = false,
+            passive = false,
+            signal = undefined;
+        if (typeof options == 'object') {
+            once = options?.once ?? once;
+            passive = options?.passive ?? passive;
+            signal = options?.signal ?? signal;
+        }
+
+        if (signal && signal.aborted) {
+            return;
+        }
+
+        for (const l of listenerList) {
+            if (l.handleEvent == listener && l.options.capture == capture) {
+                return;
+            }
+        }
+
+        listenerList.push(AudioSourceNode._makeListener(listener, { capture, once, passive, signal }));
+
+        if (signal) {
+            signal.addEventListener('abort', () => this.removeEventListener(type, listener, capture));
+        }
     }
 
     removeEventListener(
-        type: 'ended',
-        listener: (this: AudioBufferSourceNode, ev: Event) => any,
+        type: 'ended' | 'loaded',
+        listener: (this: AudioSourceNode, event: AudioSourceNodeEvent) => void,
         options?: boolean | EventListenerOptions,
     ): void {
         this.throwIfDestroyed();
-        this.sourceNode.removeEventListener(type, listener, options);
+        let listenerList;
+
+        switch (type) {
+            case 'ended': {
+                listenerList = this.onEndedListeners;
+                break;
+            }
+            case 'loaded': {
+                listenerList = this.onLoadedListeners;
+                break;
+            }
+            default: {
+                return;
+            }
+        }
+
+        let capturing = typeof options == 'boolean' ? options : options?.capture ?? false;
+        for (let index = 0; index < listenerList.length; index++) {
+            const l = listenerList[index];
+            if (l?.handleEvent == listener) {
+                if (l.options.capture == capturing) {
+                    l.removed = true;
+                    listenerList.splice(index, 1);
+                }
+                return;
+            }
+        }
     }
 
-    dispatchEvent(event: Event): boolean {
-        this.throwIfDestroyed();
-        return this.sourceNode.dispatchEvent(event);
+    /**
+     * Dispatch an event onto this {@link AudioSourceNode}
+     * @param event event to dispatch
+     * @returns `true` if any event listeners received the event
+     */
+    dispatchEvent(event: AudioSourceNodeEvent): boolean {
+        if (this._isDestroyed) return false;
+
+        let listenerList;
+        if (event.type == 'ended') {
+            listenerList = this.onEndedListeners;
+        } else if (event.type == 'loaded') {
+            listenerList = this.onLoadedListeners;
+        } else {
+            return false;
+        }
+        let listenerListCopy = [...listenerList];
+
+        let handled = false;
+        for (let index = 0; index < listenerListCopy.length; index++) {
+            let listener = listenerListCopy[index] as Listener<AudioSourceNodeEvent>;
+            if (listener.removed) {
+                continue;
+            }
+            try {
+                listener.handleEvent.call(this, event);
+                handled = true;
+            } catch (err) {
+                console.error(
+                    `An exception occurred during '${event.type}' event handling on an AudioSourceNode:`,
+                );
+                console.error(err);
+            }
+            if (listener.options.once) {
+                listenerList.splice(index, 1);
+            }
+            if (event.propagationStopped) {
+                break;
+            }
+        }
+        return handled;
+    }
+
+    private static _makeListener<E extends AudioSourceNodeEvent>(
+        fn: (this: AudioSourceNode, event: E) => void,
+        options: AddEventListenerOptions,
+    ): Listener<E> {
+        if (options == undefined) {
+            return { handleEvent: fn, options: { capture: false }, removed: false };
+        } else if (typeof options == 'boolean') {
+            return { handleEvent: fn, options: { capture: options }, removed: false };
+        }
+        return { handleEvent: fn, options, removed: false };
     }
 }
 
