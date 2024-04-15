@@ -324,6 +324,23 @@ declare class TrackSingle implements Track {
      */
     private isLoadSourceCalled;
     /**
+     * Tracks calls to the start method such that deferred start calls, using
+     * the 'loaded' event listener, will abort on subsequent calls to start if
+     * the time has been updated.
+     *
+     * This is necessary for the start method because future calls to start must
+     * not be replaced by a deferred call that happened to execute after it
+     * completed. If start is called many times, and they are all deferred, the
+     * latest one should make the call as if it was the only call.
+     */
+    private lastStartCallTime;
+    /**
+     * Tracks calls to the loop method such that deferred loop calls, using the
+     * 'loaded' event listener, will abort on subsequent calls to loop if the
+     * time has been updated.
+     */
+    private lastLoopCallTime;
+    /**
      * Implementation Notes:
      * - If the given AudioSourceNode has outgoing connections, they will be disconnected at the
      *   time this Track begins playback of the AudioSourceNode.

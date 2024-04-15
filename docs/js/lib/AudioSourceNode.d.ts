@@ -1,4 +1,20 @@
 import { AudioAdjustmentOptions } from './automation.js';
+declare class AudioSourceNodeEvent {
+    #private;
+    readonly type: string;
+    readonly target: AudioSourceNode;
+    readonly time: number;
+    protected constructor(type: string, target: AudioSourceNode, time: number);
+    stopPropagation(): void;
+    get propagationStopped(): boolean;
+}
+declare class EventEnded extends AudioSourceNodeEvent {
+    constructor(target: AudioSourceNode, time: number);
+}
+declare class EventLoaded extends AudioSourceNodeEvent {
+    readonly buffer: AudioBuffer;
+    constructor(target: AudioSourceNode, time: number, buffer: AudioBuffer);
+}
 /**
  * AudioSourceNode, interchangeable with the standard AudioBufferSourceNode.
  *
@@ -30,7 +46,7 @@ import { AudioAdjustmentOptions } from './automation.js';
  * the fact that we cannot share buffers between Audio objects; they must load an audio source
  * every time they are constructed. Because of this, we cannot use Audio() objects.
  */
-declare class AudioSourceNode implements AudioBufferSourceNode {
+declare class AudioSourceNode {
     private readonly audioContext;
     readonly owner: any;
     private sourceNode;
@@ -41,8 +57,10 @@ declare class AudioSourceNode implements AudioBufferSourceNode {
     private _isStarted;
     private _isStopped;
     private _isEnded;
-    private onEndedMainCallback;
-    private onEndedCallback;
+    private _isLoaded;
+    private onLoadedListeners;
+    private onEndedListeners;
+    private onEndedInternalCallback;
     private readonly analyser;
     private merger?;
     private splitter?;
@@ -135,11 +153,19 @@ declare class AudioSourceNode implements AudioBufferSourceNode {
      */
     get isEnded(): boolean;
     /**
+     * In the case that the {@link load()} method has never completed, this will be `false`,
+     * regardless of the state of the internal {@link AudioBuffer}.
+     * @returns `true` if the method {@link load()} has completed successfully
+     */
+    get isLoaded(): boolean;
+    /**
      * @returns `true` if this AudioSourceNode has been destroyed
      */
     get isDestroyed(): boolean;
-    get onended(): ((event: Event) => void) | null;
-    set onended(callback: ((event: Event) => void) | null);
+    get onended(): null | ((this: AudioSourceNode, event: EventEnded) => void);
+    set onended(listener: null | ((this: AudioSourceNode, event: EventEnded) => void));
+    get onloaded(): null | ((this: AudioSourceNode, event: EventLoaded) => void);
+    set onloaded(listener: null | ((this: AudioSourceNode, event: EventLoaded) => void));
     get buffer(): AudioBuffer | null;
     set buffer(buffer: AudioBuffer | null);
     /**
@@ -191,8 +217,15 @@ declare class AudioSourceNode implements AudioBufferSourceNode {
     get channelCount(): number;
     get channelCountMode(): ChannelCountMode;
     get channelInterpretation(): ChannelInterpretation;
-    addEventListener(type: 'ended', listener: (this: AudioBufferSourceNode, ev: Event) => any, options?: boolean | AddEventListenerOptions): void;
-    removeEventListener(type: 'ended', listener: (this: AudioBufferSourceNode, ev: Event) => any, options?: boolean | EventListenerOptions): void;
-    dispatchEvent(event: Event): boolean;
+    addEventListener<E extends EventLoaded>(type: 'loaded', listener: (this: AudioSourceNode, event: E) => void, options?: boolean | AddEventListenerOptions): void;
+    addEventListener<E extends EventEnded>(type: 'ended', listener: (this: AudioSourceNode, event: E) => void, options?: boolean | AddEventListenerOptions): void;
+    removeEventListener(type: 'ended' | 'loaded', listener: (this: AudioSourceNode, event: AudioSourceNodeEvent) => void, options?: boolean | EventListenerOptions): void;
+    /**
+     * Dispatch an event onto this {@link AudioSourceNode}
+     * @param event event to dispatch
+     * @returns `true` if any event listeners received the event
+     */
+    dispatchEvent(event: AudioSourceNodeEvent): boolean;
+    private static _makeListener;
 }
 export default AudioSourceNode;
