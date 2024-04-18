@@ -16,12 +16,12 @@ function loadMixer() {
     ambienceTrack
         .newTrack('storm', 'audio/Storm2.ogg')
         .loop(true, 772_453, 772_453 + 2_233_599)
-        .volume(0.5);
+        .volume(0.4);
 
     ambienceTrack
         .newTrack('rain', 'audio/River.ogg')
         .loop(true, 31, 31 + 353_589)
-        .volume(0.5);
+        .volume(0.35);
 
     ambienceTrack
         .newTrack('wildlife', 'audio/Night.ogg')
@@ -31,7 +31,7 @@ function loadMixer() {
     ambienceTrack
         .newTrack('cave', 'audio/Drips.ogg')
         .loop(true, 10, 10 + 544_625)
-        .volume(0.5);
+        .volume(0.25);
 }
 
 /* Button functions */
@@ -47,7 +47,11 @@ function toggleTrack(self) {
             self.setAttribute('data-playing', 'false');
             toggleText(self);
         } else {
-            track.start({ duration: 2 });
+            const source = track.getActiveSource() ?? track.getLoadedSource();
+            const loop = source.loop,
+                loopStart = source.loopStart,
+                loopEnd = source.loopEnd;
+            track.start({ duration: 2 }).loop(loop, loopStart, loopEnd);
             self.setAttribute('data-playing', 'true');
             toggleText(self);
             track.getActiveSource().addEventListener('ended', () => {
