@@ -511,7 +511,12 @@ class TrackSingle implements Track {
             return this;
         }
 
-        if (!this.playingSource.isLoaded) {
+        if (this.playingSource.buffer) {
+            this.playingSource.start(
+                this._time + startOptions.delay,
+                offset || (!sourceChanged ? this.resumeMarker : 0),
+            );
+        } else if (!this.playingSource.isLoaded) {
             const self = this;
             const expectedCallTime = this.lastStartCallTime;
             this.playingSource.addEventListener(
@@ -530,10 +535,12 @@ class TrackSingle implements Track {
                 { once: true },
             );
         } else {
-            this.playingSource.start(
-                this._time + startOptions.delay,
-                offset || (!sourceChanged ? this.resumeMarker : 0),
+            console.warn(
+                `Track's AudioSourceNode seems to be in an invalid state. ` +
+                    `There is no buffer, yet load() has completed previously. ` +
+                    `Have you deliberately set the AudioSourceNode buffer to null?`,
             );
+            return this;
         }
 
         automation(this.audioContext, this.gainPrimaryNode.gain, 1, startOptions, true);
@@ -745,7 +752,15 @@ class TrackSingle implements Track {
         const source = this.playingSource ?? this.loadedSource;
         this.lastLoopCallTime = this.audioContext.currentTime;
         if (source && !source.isDestroyed) {
-            if (!source.isLoaded) {
+            if (source.buffer?.sampleRate) {
+                source.loop = enabled;
+                if (startSample != undefined) {
+                    source.loopStart = startSample / source.buffer.sampleRate;
+                }
+                if (endSample != undefined) {
+                    source.loopEnd = endSample;
+                }
+            } else if (!source.isLoaded) {
                 const self = this;
                 const expectedCallTime = this.lastLoopCallTime;
                 source.addEventListener(
@@ -763,15 +778,13 @@ class TrackSingle implements Track {
                     },
                 );
                 return this;
-            }
-            source.loop = enabled;
-            if (source.buffer?.sampleRate) {
-                if (startSample != undefined) {
-                    source.loopStart = startSample / source.buffer?.sampleRate;
-                }
-                if (endSample != undefined) {
-                    source.loopEnd = endSample;
-                }
+            } else {
+                console.warn(
+                    `Track's AudioSourceNode seems to be in an invalid state. ` +
+                        `There is no buffer, yet load() has completed previously. ` +
+                        `Have you deliberately set the AudioSourceNode buffer to null?`,
+                );
+                return this;
             }
         }
         return this;
