@@ -133,12 +133,12 @@ export const trackSwapOutIn: TrackSwapAdvancedOptions = Object.freeze({
  */
 export const trackSwapCross: TrackSwapAdvancedOptions = Object.freeze({
     oldSource: Object.freeze({
-        ramp: AudioRampType.NATURAL,
+        ramp: AudioRampType.EQUAL_POWER,
         delay: 0,
         duration: 1.2,
     }),
     newSource: Object.freeze({
-        ramp: AudioRampType.NATURAL,
+        ramp: AudioRampType.EQUAL_POWER_IN,
         delay: 0,
         duration: 1.2,
     }),

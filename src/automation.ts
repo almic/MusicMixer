@@ -13,12 +13,23 @@ export enum AudioRampType {
     EXPONENTIAL = 'exponential',
 
     /**
-     * Natural ramp. Depending on the adjustment being made, this will either be a
-     * logarithmic adjustment, or an equal-power adjustment. In general, this option
-     * will produce the best sounding results compared to the other options, and in
-     * general should always be preferred over the others.
+     * Natural ramp. This is like exponential, but ideal for adjustments where
+     * you want a long tail, perfect for fading out sounds.
      */
     NATURAL = 'natural',
+
+    /**
+     * Equal power ramp. This is ideal for crossfading two sources.
+     */
+    EQUAL_POWER = 'equal_power',
+
+    /**
+     * Inverse equal power ramp. Advanced usages only!
+     *
+     * This should only be used in tandem with the normal equal power ramp,
+     * specifically applied to the incoming source of a crossfade.
+     */
+    EQUAL_POWER_IN = 'equal_power_in',
 }
 
 /**
@@ -147,6 +158,34 @@ export default function automation(
             audioParam.linearRampToValueAtTime(
                 value,
                 options.delay + options.duration + audioContext.currentTime,
+            );
+            break;
+        }
+        case AudioRampType.EQUAL_POWER:
+        case AudioRampType.EQUAL_POWER_IN: {
+            // Web Audio API does not have a built in equal power ramp
+            // setValueCurveAtTime linearly interpolates between values
+            const pollRate = 10;
+            const length = Math.round(pollRate * options.duration);
+            const valueCurve = new Float32Array(length);
+            const halfPi = Math.PI / 2;
+            const squashFactor = halfPi / length;
+            if (options.ramp == AudioRampType.EQUAL_POWER) {
+                for (let index = 0; index < length; index++) {
+                    // V_0 -> V_1 == V_1 - (V_1 - V_0) * cos( (t - T) * (π / 2T) + (π / 2) )
+                    valueCurve[index] =
+                        value - difference * Math.cos((index - length) * squashFactor + halfPi);
+                }
+            } else {
+                for (let index = 0; index < length; index++) {
+                    // V_0 -> V_1 == V_0 + (V_1 - V_0) * cos( (t - T) * (π / 2T) )
+                    valueCurve[index] = currentValue + difference * Math.cos((index - length) * squashFactor);
+                }
+            }
+            audioParam.setValueCurveAtTime(
+                valueCurve,
+                options.delay + audioContext.currentTime,
+                options.duration,
             );
             break;
         }
