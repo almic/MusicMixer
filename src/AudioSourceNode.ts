@@ -1,4 +1,5 @@
-import { AudioAdjustmentOptions } from './automation.js';
+import automation, { AudioAdjustmentOptions } from './automation.js';
+import buildOptions, * as defaults from './defaults.js';
 
 class AudioSourceNodeEvent {
     #propagationStopped = false;
@@ -238,13 +239,23 @@ class AudioSourceNode {
 
     volume(volume: number, options?: AudioAdjustmentOptions): AudioSourceNode {
         this.throwIfDestroyed();
-        console.log(`stub volume ${volume} with options ${options}`);
+        automation(
+            this.audioContext,
+            this.gainNode.gain,
+            volume,
+            buildOptions(options, defaults.automationDefault),
+        );
         return this;
     }
 
     pan(pan: number, options?: AudioAdjustmentOptions): AudioSourceNode {
         this.throwIfDestroyed();
-        console.log(`stub pan ${pan} with options ${options}`);
+        automation(
+            this.audioContext,
+            this.stereoPannerNode.pan,
+            pan,
+            buildOptions(options, defaults.automationDefault),
+        );
         return this;
     }
 
