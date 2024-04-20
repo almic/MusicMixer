@@ -11,12 +11,21 @@ export declare enum AudioRampType {
      */
     EXPONENTIAL = "exponential",
     /**
-     * Natural ramp. Depending on the adjustment being made, this will either be a
-     * logarithmic adjustment, or an equal-power adjustment. In general, this option
-     * will produce the best sounding results compared to the other options, and in
-     * general should always be preferred over the others.
+     * Natural ramp. This is like exponential, but ideal for adjustments where
+     * you want a long tail, perfect for fading out sounds.
      */
-    NATURAL = "natural"
+    NATURAL = "natural",
+    /**
+     * Equal power ramp. This is ideal for crossfading two sources.
+     */
+    EQUAL_POWER = "equal_power",
+    /**
+     * Inverse equal power ramp. Advanced usages only!
+     *
+     * This should only be used in tandem with the normal equal power ramp,
+     * specifically applied to the incoming source of a crossfade.
+     */
+    EQUAL_POWER_IN = "equal_power_in"
 }
 /**
  * Adjustment options to use when changing volume, panning, etc.
