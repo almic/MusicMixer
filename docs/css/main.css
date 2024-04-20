@@ -271,7 +271,9 @@ select[size] option:hover {
 a {
     color: var(--theme-color);
     text-decoration: none;
-    transition: color 80ms linear, border-color 80ms linear;
+    transition:
+        color 80ms linear,
+        border-color 80ms linear;
     border-bottom: 1px solid transparent;
 }
 
@@ -318,6 +320,23 @@ div.flex-break-row {
     flex-basis: 100%;
     height: 0 !important;
     margin: 0 !important;
+}
+
+div.flex-canvas,
+div.flex-canvas-aside {
+    height: initial !important;
+    margin: 0 !important;
+}
+
+div.flex-canvas {
+    aspect-ratio: 1/1;
+    background-color: color-mix(in srgb, var(--theme-color), transparent 96%);
+}
+
+div.flex-canvas-aside {
+    min-height: 100%;
+    border-left: 1px solid color-mix(in srgb, var(--theme-color), transparent 75%);
+    background: color-mix(in srgb, var(--theme-color), transparent 92%);
 }
 
 div.flex-center {
@@ -370,14 +389,16 @@ div.grid-box h3 {
 
 div.glow-responsive {
     box-shadow: 0 0 0px rgba(0, 255, 255, 0);
-    background: radial-gradient(ellipse 29% 100% at left -25% bottom 32%, var(--theme-color), transparent)
-            padding-box,
+    background:
+        radial-gradient(ellipse 29% 100% at left -25% bottom 32%, var(--theme-color), transparent) padding-box,
         radial-gradient(ellipse 29% 100% at right -25% bottom 32%, var(--theme-color), transparent)
             padding-box,
         radial-gradient(ellipse 100% 31% at left 50% bottom -25%, var(--theme-color), black) padding-box;
     background-size: 108% 106%;
     background-position: 50% 0%;
-    transition: background-size 80ms ease-out, box-shadow 80ms ease-out;
+    transition:
+        background-size 80ms ease-out,
+        box-shadow 80ms ease-out;
 }
 
 div.glow-responsive:focus,
@@ -458,7 +479,9 @@ ul.list-blocks > li {
 
 .collapse-active {
     border-bottom-color: color-mix(in srgb, var(--theme-color), transparent 50%);
-    transition: border-bottom-color 100ms ease, background-color 200ms;
+    transition:
+        border-bottom-color 100ms ease,
+        background-color 200ms;
 }
 
 .collapse-active::before,
@@ -474,7 +497,9 @@ ul.list-blocks > li {
     border-bottom-style: solid;
     border-bottom-color: transparent;
     /* Change transition time to be slower during collapse, faster when opened */
-    transition: border-bottom-color 500ms ease, background-color 200ms ease-out;
+    transition:
+        border-bottom-color 500ms ease,
+        background-color 200ms ease-out;
 }
 
 .collapse-button::before,
