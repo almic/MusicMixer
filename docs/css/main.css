@@ -343,6 +343,10 @@ div.flex-center {
     justify-content: center;
 }
 
+div.flex-center.flex-column {
+    align-items: center;
+}
+
 div.flex-controls {
     width: 80%;
     margin: 1rem auto;
@@ -438,6 +442,10 @@ div.border-responsive::before {
 div.border-responsive:focus::before,
 div.border-responsive:hover::before {
     background-position-y: 80%;
+}
+
+img.logo {
+    margin: 8px;
 }
 
 p.moz-only {
