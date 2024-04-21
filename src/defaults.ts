@@ -1,4 +1,4 @@
-import { TrackSwapOptions, TrackSwapAdvancedOptions } from './Track.js';
+import { TrackSwapOptions, TrackSwapAdvancedOptions, TrackSwapType } from './Track.js';
 import { AudioAdjustmentOptions, AudioRampType } from './automation.js';
 
 function buildOptions(
@@ -14,41 +14,63 @@ function buildOptions(
     defaultSwapOptions: TrackSwapAdvancedOptions,
 ): TrackSwapAdvancedOptions;
 function buildOptions(
-    options: AudioAdjustmentOptions | TrackSwapOptions | TrackSwapAdvancedOptions | undefined | null,
-    defaultOptions: Required<AudioAdjustmentOptions> | TrackSwapAdvancedOptions,
-): Required<AudioAdjustmentOptions> | TrackSwapAdvancedOptions {
-    if ('swap' in defaultOptions) {
-        console.warn(
-            'A caller passed a defaultOptions object of type TrackSwapOptions. Only TrackSwapAdvancedOptions ' +
-                'are supported for buildOptions(). This is likely a mistake.',
-        );
-    }
-
+    pannerOptions: PannerOptions | undefined | null,
+    defaultPannerOptions: Required<PannerOptions>,
+): Required<PannerOptions>;
+function buildOptions(
+    options:
+        | AudioAdjustmentOptions
+        | TrackSwapOptions
+        | TrackSwapAdvancedOptions
+        | PannerOptions
+        | undefined
+        | null,
+    defaultOptions: Required<AudioAdjustmentOptions> | TrackSwapAdvancedOptions | Required<PannerOptions>,
+): Required<AudioAdjustmentOptions> | TrackSwapAdvancedOptions | Required<PannerOptions> {
     if (!options) {
         return structuredClone(defaultOptions);
     }
 
-    if ('newSource' in options) {
-        if (defaultOptions && !('newSource' in defaultOptions)) {
-            console.warn(
-                'A caller passed some options of type TrackSwapAdvancedOptions to a MusicMixer function that ' +
-                    'only accepts AudioAdjustmentOptions. This is likely a mistake.',
-            );
+    if (isObjectLike(defaultOptions, pannerDefault)) {
+        if (!isObjectLike(options, pannerDefault)) {
+            console.warn('Specified options were not like PannerOptions. This is likely a mistake.');
             return structuredClone(defaultOptions);
         }
-        return structuredClone(options);
+
+        if (isObjectEquivalent(options, pannerDefault)) {
+            return structuredClone(options);
+        }
+
+        return optionalCopyInto(defaultOptions, options);
     }
 
-    // Doing this here makes logic easier in the next block
-    if ('newSource' in defaultOptions) {
+    if (isObjectLike(defaultOptions, automationDefault)) {
+        if (!isObjectLike(options, automationDefault)) {
+            console.warn('Specified options were not like AudioAdjustmentOptions. This is likely a mistake.');
+            return structuredClone(defaultOptions);
+        }
+
+        return optionalCopyInto(defaultOptions, options);
+    }
+
+    if (isObjectLike(defaultOptions, trackSwapDefault)) {
+        if (isObjectLike(options, trackSwapDefault)) {
+            return structuredClone(options);
+        }
+
         const fullOptions = structuredClone(defaultOptions);
 
-        if (options.ramp) {
+        if (!isObjectLike(options, trackSwapPlain)) {
+            console.warn('Specified options were not like TrackSwapOptions. This is likely a mistake.');
+            return fullOptions;
+        }
+
+        if ('ramp' in options) {
             fullOptions.oldSource.ramp = options.ramp;
             fullOptions.newSource.ramp = options.ramp;
         }
 
-        if (options.duration) {
+        if ('duration' in options && options.duration) {
             const oldLength = fullOptions.oldSource.delay + fullOptions.oldSource.duration;
             const newLength = fullOptions.newSource.delay + fullOptions.newSource.duration;
             const difference = oldLength - newLength;
@@ -61,7 +83,7 @@ function buildOptions(
             fullOptions.newSource.duration *= markiplier;
         }
 
-        if (options.delay) {
+        if ('delay' in options && options.delay) {
             fullOptions.oldSource.delay += options.delay;
             fullOptions.newSource.delay += options.delay;
         }
@@ -69,32 +91,80 @@ function buildOptions(
         return fullOptions;
     }
 
-    const fullOptions = structuredClone(defaultOptions);
+    console.warn(
+        'A caller within MusicMixer provided defaultOptions that did not match any known options. ' +
+            'This is likely a mistake',
+    );
 
-    // while required in typescript, javascript will let this be undefined
-    if (options.ramp) {
-        fullOptions.ramp = structuredClone(options.ramp);
-    }
-
-    if (options.delay) {
-        fullOptions.delay = options.delay;
-    }
-
-    if (options.duration) {
-        fullOptions.duration = options.duration;
-    }
-
-    if ('swap' in options) {
-        console.warn(
-            'A caller passed some options of type TrackSwapOptions to a MusicMixer function that ' +
-                'only accepts AudioAdjustmentOptions. This is likely a mistake.',
-        );
-    }
-
-    return fullOptions;
+    return structuredClone(defaultOptions);
 }
 
 export default buildOptions;
+
+/**
+ * Returns `true` when `obj` has at least one key from `like`
+ */
+function isObjectLike<T extends object>(obj: object, like: T): obj is Partial<T> {
+    for (const key in like) {
+        if (key in obj) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Returns `true` when `obj` has all keys from `like`
+ */
+function isObjectEquivalent<T extends object>(obj: object, other: T): obj is T {
+    for (const key in other) {
+        if (!(key in obj)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Given a `target` and `source`, creates a copy `result = structuredClone(target)`, and copies the
+ * value of keys that exist on both `target` and `source`, where `source[key] !== undefined`,
+ * returning `result`.
+ *
+ * If `mapFunc` is provided, the value assigned is the result of `mapFunc(key, target[key], source[key])`
+ * where the `source[key]` is guaranteed to not be `undefined`, but may be `null`.
+ */
+function optionalCopyInto<T, V extends {} | null>(
+    target: T,
+    source: any,
+    mapFunc?: (key: string, targetValue: any, sourceValue: V) => any,
+): T {
+    const result = structuredClone(target);
+    if (mapFunc) {
+        for (const key in target) {
+            if (key in source && source[key] !== undefined) {
+                result[key] = mapFunc(key, target[key], source[key]);
+            }
+        }
+
+        return result;
+    }
+
+    for (const key in target) {
+        if (key in source && source[key] !== undefined) {
+            result[key] = source[key];
+        }
+    }
+
+    return result;
+}
+
+const trackSwapPlain: Required<TrackSwapOptions> = Object.freeze({
+    ramp: AudioRampType.NATURAL,
+    delay: 0,
+    duration: 2,
+    swap: TrackSwapType.OUT_IN,
+    swapDelay: 0.2,
+});
 
 /**
  * Default behavior for an IN_OUT track audio swap
@@ -237,4 +307,28 @@ export const automationDefault: Required<AudioAdjustmentOptions> = Object.freeze
     ramp: AudioRampType.NATURAL,
     delay: 0,
     duration: 1 / 711,
+});
+
+/**
+ * Default PannerOptions
+ */
+export const pannerDefault: Required<PannerOptions> = Object.freeze({
+    panningModel: 'HRTF',
+    distanceModel: 'inverse',
+    positionX: 0,
+    positionY: 0,
+    positionZ: 0,
+    orientationX: 1,
+    orientationY: 0,
+    orientationZ: 0,
+    refDistance: 1,
+    maxDistance: 10000,
+    rolloffFactor: 1,
+    coneInnerAngle: 360,
+    coneOuterAngle: 360,
+    coneOuterGain: 0,
+    // Only defined to make typescript happy, don't use these!
+    channelCount: 2,
+    channelCountMode: 'clamped-max',
+    channelInterpretation: 'speakers',
 });
