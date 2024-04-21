@@ -1,4 +1,4 @@
-# MusicMixer.js
+# <img align="center" src="https://github.com/almic/MusicMixer/blob/main/docs/logo.svg?raw=true" width="48"> Music Mixer
 
 Music mixing library, designed for general use in JavaScript applications.
 
