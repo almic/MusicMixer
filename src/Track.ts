@@ -452,6 +452,7 @@ class TrackSingle implements Track {
         // Implicitly load a copy of the same source to call swap
         if (this.playingSource?.isActive && !this.loadedSource) {
             this.loadedSource = this.playingSource.clone(this);
+            this.loadedSource.hrtfPanner = this.playingSource.hrtfPanner;
             this.isLoadSourceCalled = true;
         }
 

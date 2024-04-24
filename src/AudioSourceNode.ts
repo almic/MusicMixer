@@ -1,5 +1,6 @@
 import automation, { AudioAdjustmentOptions } from './automation.js';
 import buildOptions, * as defaults from './defaults.js';
+import HRTFPannerNode from './HRTFPannerNode.js';
 
 class AudioSourceNodeEvent {
     #propagationStopped = false;
@@ -76,6 +77,7 @@ class AudioSourceNode {
     private sourceNode: AudioBufferSourceNode;
     private readonly gainNode: GainNode;
     private readonly stereoPannerNode: StereoPannerNode;
+    private hrtfPannerNode: HRTFPannerNode | null = null;
 
     private path: string | null = null;
     private _isDestroyed: boolean = false;
@@ -180,13 +182,16 @@ class AudioSourceNode {
         inputIndex?: number,
     ): AudioNode | void {
         this.throwIfDestroyed();
-        // We only want to diconnect/ connect the final gain node, doing anything else splits too much logic around
-        // that is needed to track the playhead position on the source node. Source connections are made only when
-        // the buffer source is known.
+        const target = this.hrtfPannerNode ? this.hrtfPannerNode : this.gainNode;
         if (destination instanceof AudioNode) {
-            return this.gainNode.connect(destination, outputIndex, inputIndex);
+            return target.connect(destination, outputIndex, inputIndex);
+        } else if (destination instanceof AudioParam) {
+            return target.connect(destination, outputIndex);
+        } else {
+            console.warn(
+                `Cannot connect AudioSourceNode to type ${(destination as any)?.constructor?.name}. This is likely a mistake.`,
+            );
         }
-        return this.gainNode.connect(destination, outputIndex);
     }
 
     public disconnect(): void;
@@ -200,30 +205,29 @@ class AudioSourceNode {
         outputOrNodeOrParam?: number | AudioNode | AudioParam,
         output?: number,
         input?: number,
-    ) {
+    ): void {
         this.throwIfDestroyed();
-        // Only diconnect the final gain node, the other nodes will all stay connected
+        const target = this.hrtfPannerNode ? this.hrtfPannerNode : this.gainNode;
         if (outputOrNodeOrParam == undefined) {
-            return this.gainNode.disconnect();
+            return target.disconnect();
         }
-        if (typeof outputOrNodeOrParam == 'number') {
-            return this.gainNode.disconnect(outputOrNodeOrParam);
+        if (outputOrNodeOrParam == 0) {
+            return target.disconnect(outputOrNodeOrParam);
         }
         if (outputOrNodeOrParam instanceof AudioNode) {
-            if (output != undefined && input != undefined) {
-                return this.gainNode.disconnect(outputOrNodeOrParam, output, input);
-            } else if (output != undefined) {
-                return this.gainNode.disconnect(outputOrNodeOrParam, output);
+            if (output == 0 && input != undefined) {
+                return target.disconnect(outputOrNodeOrParam, output, input);
+            } else if (output == 0) {
+                return target.disconnect(outputOrNodeOrParam, output);
             } else {
-                return this.gainNode.disconnect(outputOrNodeOrParam);
+                return target.disconnect(outputOrNodeOrParam);
             }
         }
         if (outputOrNodeOrParam instanceof AudioParam) {
-            if (output != undefined) {
-                return this.gainNode.disconnect(outputOrNodeOrParam, output);
-            } else {
-                return this.gainNode.disconnect(outputOrNodeOrParam);
+            if (output == 0) {
+                return target.disconnect(outputOrNodeOrParam, output);
             }
+            return target.disconnect(outputOrNodeOrParam);
         }
     }
 
@@ -259,11 +263,34 @@ class AudioSourceNode {
         return this;
     }
 
-    pan3d(): AudioSourceNode {
-        // TODO: ...someday...
-        // https://github.com/twoz/hrtf-panner-js/blob/master/hrtf.js
+    /**
+     * Attach an {@link HRTFPannerNode} to spatialize this {@link AudioSourceNode}. This will disconnect all current
+     * outputs on this {@link AudioSourceNode} to prevent creating cycles. You must call `connect()` again in order to
+     * continue sending output to your destination.
+     *
+     * You should not use the `pan()` method in conjunction with the {@link HRTFPannerNode}.
+     *
+     * @param hrtfPannerNode {@link HRTFPannerNode} to attach
+     * @returns this {@link AudioSourceNode}
+     */
+    set hrtfPanner(hrtfPannerNode: HRTFPannerNode | null) {
         this.throwIfDestroyed();
-        return this;
+        this.disconnect();
+
+        if (!hrtfPannerNode) {
+            this.hrtfPannerNode = null;
+            return;
+        }
+
+        this.hrtfPannerNode = hrtfPannerNode;
+        this.hrtfPannerNode.connectSource(this.gainNode);
+    }
+
+    /**
+     * @returns the currently assigned {@link HRTFPannerNode} or `null` if none is set
+     */
+    get hrtfPanner(): HRTFPannerNode | null {
+        return this.hrtfPannerNode;
     }
 
     /**
@@ -603,6 +630,9 @@ class AudioSourceNode {
         if (this.stereoPannerNode) {
             this.stereoPannerNode.disconnect();
             (this.stereoPannerNode as any) = undefined;
+        }
+        if (this.hrtfPannerNode) {
+            (this.hrtfPannerNode as any) = undefined;
         }
         if (this.analyser) {
             (this.analyser as any) = undefined;
