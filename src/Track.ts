@@ -759,7 +759,7 @@ class TrackSingle implements Track {
                     source.loopStart = startSample / source.buffer.sampleRate;
                 }
                 if (endSample != undefined) {
-                    source.loopEnd = endSample;
+                    source.loopEnd = endSample / source.buffer.sampleRate;
                 }
             } else if (!source.isLoaded) {
                 const self = this;
