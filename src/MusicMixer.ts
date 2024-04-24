@@ -8,13 +8,14 @@ import * as defaults from './defaults.js';
  * MusicMixer
  */
 class MusicMixer {
-    private readonly audioContext: AudioContext = new AudioContext();
+    private readonly audioContext: AudioContext;
     private readonly gainNode: GainNode;
     private tracks: {
         [name: string]: Track;
     } = {};
 
-    constructor() {
+    constructor(options?: AudioContextOptions) {
+        this.audioContext = new AudioContext(options);
         this.gainNode = this.audioContext.createGain();
         this.gainNode.connect(this.audioContext.destination);
     }
@@ -97,6 +98,10 @@ class MusicMixer {
         automation(this.audioContext, this.gainNode.gain, volume, adjustment);
 
         return this;
+    }
+
+    get context(): AudioContext {
+        return this.audioContext;
     }
 
     get currentTime(): number {
