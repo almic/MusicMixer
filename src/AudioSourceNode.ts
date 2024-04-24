@@ -687,6 +687,14 @@ class AudioSourceNode {
         return this.sourceNode.playbackRate;
     }
 
+    /**
+     * -1 if there is no set buffer
+     */
+    get sampleRate(): number {
+        this.throwIfDestroyed();
+        return this.sourceNode.buffer?.sampleRate ?? -1;
+    }
+
     get context() {
         this.throwIfDestroyed();
         return this.audioContext;
