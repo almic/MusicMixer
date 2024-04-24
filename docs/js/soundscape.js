@@ -9,7 +9,7 @@ import MusicMixer from './lib/MusicMixer.js';
 let mixer;
 let ambienceTrack;
 function loadMixer() {
-    mixer = new MusicMixer();
+    mixer = new MusicMixer({ latencyHint: 'interactive', sampleRate: 44100 });
     ambienceTrack = mixer.newTrackGroup('ambience');
     ambienceTrack.volume(0.5);
 
@@ -49,8 +49,8 @@ function toggleTrack(self) {
         } else {
             const source = track.getActiveSource() ?? track.getLoadedSource();
             const loop = source.loop,
-                loopStart = source.loopStart,
-                loopEnd = source.loopEnd;
+                loopStart = source.loopStart * source.sampleRate,
+                loopEnd = source.loopEnd * source.sampleRate;
             track.start({ duration: 2 }).loop(loop, loopStart, loopEnd);
             self.setAttribute('data-playing', 'true');
             toggleText(self);

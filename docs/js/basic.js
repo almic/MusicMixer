@@ -5,7 +5,7 @@ let mixer;
 let musicTrack;
 let cache = {};
 function loadMixer() {
-    mixer = new MusicMixer();
+    mixer = new MusicMixer({ latencyHint: 'interactive' });
     musicTrack = mixer.newTrack('music');
     musicTrack.volume(0.5);
 }

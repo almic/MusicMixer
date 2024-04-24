@@ -652,7 +652,7 @@ class AudioSourceNode {
         return this.sourceNode.detune;
     }
 
-    get loop() {
+    get loop(): boolean {
         this.throwIfDestroyed();
         return this.sourceNode.loop;
     }
@@ -662,27 +662,27 @@ class AudioSourceNode {
         this.sourceNode.loop = value;
     }
 
-    get loopStart() {
+    get loopStart(): number {
         this.throwIfDestroyed();
         return this.sourceNode.loopStart;
     }
 
-    set loopStart(value: number) {
+    set loopStart(seconds: number) {
         this.throwIfDestroyed();
-        this.sourceNode.loopStart = value;
+        this.sourceNode.loopStart = seconds;
     }
 
-    get loopEnd() {
+    get loopEnd(): number {
         this.throwIfDestroyed();
         return this.sourceNode.loopEnd;
     }
 
-    set loopEnd(value: number) {
+    set loopEnd(seconds: number) {
         this.throwIfDestroyed();
-        this.sourceNode.loopEnd = value;
+        this.sourceNode.loopEnd = seconds;
     }
 
-    get playbackRate() {
+    get playbackRate(): AudioParam {
         this.throwIfDestroyed();
         return this.sourceNode.playbackRate;
     }
@@ -695,7 +695,7 @@ class AudioSourceNode {
         return this.sourceNode.buffer?.sampleRate ?? -1;
     }
 
-    get context() {
+    get context(): AudioContext {
         this.throwIfDestroyed();
         return this.audioContext;
     }
