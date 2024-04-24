@@ -343,10 +343,6 @@ div.flex-center {
     justify-content: center;
 }
 
-div.flex-center.flex-column {
-    align-items: center;
-}
-
 div.flex-controls {
     width: 80%;
     margin: 1rem auto;
