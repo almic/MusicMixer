@@ -66,15 +66,23 @@
                         class="flex-container flex-center flex-column center-text"
                         style="height:initial;min-height:100%;margin:8px"
                     >
+                        <button
+                            type="button"
+                            data-toggle-text="Stop Music"
+                            onclick="toggleTrack(this)"
+                            >Play Music</button>
+                        <br>
                         <span>Volume</span>
-                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="">
+                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="changeVolume(Number(this.value))">
                         <br>
-                        <span>Inner Cone</span>
-                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="">
+                        <span>Distance</span>
+                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="updateDistance(Number(this.value))">
                         <br>
-                        <span>Outer Cone</span>
-                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="">
+                        <span>Left &#x2190;&#x2192; Ahead &#x2190;&#x2192; Right</span>
+                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="updateAzimuth(Number(this.value))">
                         <br>
+                        <span>Above &#x2190;&#x2192; Below</span>
+                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="updateElevation(Number(this.value))">
                     </div>
                 </div>
             </div>
