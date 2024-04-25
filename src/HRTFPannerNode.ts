@@ -1,4 +1,4 @@
-import automation from './automation.js';
+import automation, { AudioRampType } from './automation.js';
 import buildOptions, * as defaults from './defaults.js';
 
 /**
@@ -43,6 +43,7 @@ type InterpolationMap = {
  *
  */
 class HRTFPannerNode {
+    private pannerOptions: Required<PannerOptions>;
     private pannerNodeMain: PannerNode;
     private pannerNodeInterpolate: PannerNode;
 
@@ -51,6 +52,7 @@ class HRTFPannerNode {
 
     private gainPrimaryNode: GainNode;
     private gainSecondaryNode: GainNode;
+    private gainLowpassNode: GainNode;
 
     /** Tracks if the method `connectSource()` has been called previously */
     private isSourceConnected: boolean = false;
@@ -80,21 +82,33 @@ class HRTFPannerNode {
         readonly audioContext: AudioContext,
         options?: PannerOptions,
     ) {
-        const pannerOptions = buildOptions(options, defaults.pannerDefault);
+        this.pannerOptions = buildOptions(options, defaults.pannerDefault);
 
-        this.pannerNodeMain = new PannerNode(audioContext, pannerOptions);
-        this.pannerNodeInterpolate = new PannerNode(audioContext, pannerOptions);
+        if (this.pannerOptions.maxDistance < Number.EPSILON) {
+            throw new RangeError(
+                `The maxDistance value ${this.pannerOptions.maxDistance} is below the minimum acceptable value of ${Number.EPSILON}.`,
+            );
+        }
+
+        if (this.pannerOptions.refDistance < Number.EPSILON) {
+            throw new RangeError(
+                `The refDistance value ${this.pannerOptions.refDistance} is below the minimum acceptable value of ${Number.EPSILON}.`,
+            );
+        }
+
+        this.pannerNodeMain = new PannerNode(audioContext, this.pannerOptions);
+        this.pannerNodeInterpolate = new PannerNode(audioContext, this.pannerOptions);
 
         this.nextInterpolateMap = {
-            positionX: pannerOptions.positionX,
-            positionY: pannerOptions.positionY,
-            positionZ: pannerOptions.positionZ,
-            orientationX: pannerOptions.orientationX,
-            orientationY: pannerOptions.orientationY,
-            orientationZ: pannerOptions.orientationZ,
-            coneInnerAngle: pannerOptions.coneInnerAngle,
-            coneOuterAngle: pannerOptions.coneOuterAngle,
-            coneOuterGain: pannerOptions.coneOuterGain,
+            positionX: this.pannerOptions.positionX,
+            positionY: this.pannerOptions.positionY,
+            positionZ: this.pannerOptions.positionZ,
+            orientationX: this.pannerOptions.orientationX,
+            orientationY: this.pannerOptions.orientationY,
+            orientationZ: this.pannerOptions.orientationZ,
+            coneInnerAngle: this.pannerOptions.coneInnerAngle,
+            coneOuterAngle: this.pannerOptions.coneOuterAngle,
+            coneOuterGain: this.pannerOptions.coneOuterGain,
         };
 
         this.highpassFilter = new BiquadFilterNode(audioContext, {
@@ -112,9 +126,11 @@ class HRTFPannerNode {
 
         this.gainPrimaryNode = audioContext.createGain();
         this.gainSecondaryNode = audioContext.createGain();
+        this.gainLowpassNode = audioContext.createGain();
+
         this.gainSecondaryNode.gain.value = 0;
 
-        this.lowpassFilter.connect(this.gainPrimaryNode);
+        this.lowpassFilter.connect(this.gainLowpassNode).connect(this.gainPrimaryNode);
         this.highpassFilter.connect(this.pannerNodeMain);
         this.pannerNodeMain.connect(this.gainPrimaryNode);
 
@@ -130,6 +146,35 @@ class HRTFPannerNode {
             result[index] = Math.cos((index - length + 1) * squashFactor);
         }
         return result;
+    }
+
+    private computeDistanceGain(): number {
+        const listener = this.audioContext.listener;
+        const x = this.nextInterpolateMap.positionX - listener.positionX.value,
+            y = this.nextInterpolateMap.positionY - listener.positionY.value,
+            z = this.nextInterpolateMap.positionZ - listener.positionZ.value;
+        const maxDistance = this.pannerOptions.maxDistance;
+        const distance = Math.sqrt(x * x + y * y + z * z);
+        if (distance >= maxDistance) {
+            return 0;
+        }
+        const refDistance = this.pannerOptions.refDistance;
+        const rolloffFactor = this.pannerOptions.rolloffFactor;
+        switch (this.pannerNodeMain.distanceModel) {
+            case 'linear': {
+                const distanceClamped = Math.max(refDistance, Math.min(distance, maxDistance));
+                return 1 - (rolloffFactor * (distanceClamped - refDistance)) / (maxDistance - refDistance);
+            }
+            case 'inverse': {
+                return (
+                    refDistance /
+                    (refDistance + rolloffFactor * (Math.max(distance, refDistance) - refDistance))
+                );
+            }
+            case 'exponential': {
+                return Math.pow(Math.max(distance, refDistance) / refDistance, -rolloffFactor);
+            }
+        }
     }
 
     connectSource(source: AudioNode) {
@@ -217,7 +262,7 @@ class HRTFPannerNode {
             this.pannerNodeMain = this.pannerNodeInterpolate;
             this.pannerNodeInterpolate = originalPanner;
 
-            this.lowpassFilter.connect(this.gainPrimaryNode);
+            this.gainLowpassNode.connect(this.gainPrimaryNode);
             this.highpassFilter.connect(this.pannerNodeMain);
             this.pannerNodeMain.connect(this.gainPrimaryNode);
 
@@ -245,11 +290,23 @@ class HRTFPannerNode {
                 true,
             );
 
+            automation(
+                this.audioContext,
+                this.gainLowpassNode.gain,
+                this.computeDistanceGain(),
+                {
+                    ramp: AudioRampType.LINEAR,
+                    delay: this.interpolateDelaySeconds,
+                    duration: this.interpolateTimeSeconds,
+                },
+                true,
+            );
+
             const self = this;
             const expectedInterpolationTime = this.lastInterpolationTime;
             setTimeout(() => {
                 if (self.lastInterpolationTime - expectedInterpolationTime < Number.EPSILON) {
-                    this.lowpassFilter.disconnect(originalGain);
+                    this.gainLowpassNode.disconnect(originalGain);
                     this.highpassFilter.disconnect(originalPanner);
                     originalPanner.disconnect(originalGain);
                 }
