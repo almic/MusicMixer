@@ -42,7 +42,7 @@ export type AudioAdjustmentOptions = {
      * 1 is the adjusted state. Going below 0 or above 1 does what you would expect, going beyond
      * the initial and adjusted state respectively.
      */
-    ramp: AudioRampType | number[] | null;
+    ramp: AudioRampType | number[] | Float32Array | null;
 
     /**
      * Delay of seconds before applying this adjustment.
@@ -89,16 +89,20 @@ export default function automation(
 
     audioParam.cancelAndHoldAtTime(options.delay + audioContext.currentTime);
     audioParam.setValueAtTime(currentValue, options.delay + audioContext.currentTime);
-    if (Array.isArray(options.ramp)) {
-        const valueCurve = [];
+    if (Array.isArray(options.ramp) || options.ramp instanceof Float32Array) {
+        const valueCurve = new Float32Array(options.ramp.length);
+        let i = 0;
         for (const markiplier of options.ramp) {
-            valueCurve.push(currentValue + difference * markiplier);
+            valueCurve[i++] = currentValue + difference * markiplier;
         }
         audioParam.setValueCurveAtTime(
             valueCurve,
             options.delay + audioContext.currentTime,
             options.duration,
         );
+        const offset = options.delay + options.duration + audioContext.currentTime;
+        audioParam.cancelScheduledValues(offset);
+        audioParam.linearRampToValueAtTime(value, offset);
         return;
     }
 
@@ -166,7 +170,7 @@ export default function automation(
             // Web Audio API does not have a built in equal power ramp
             // setValueCurveAtTime linearly interpolates between values
             const pollRate = 10;
-            const length = Math.round(pollRate * options.duration);
+            const length = options.duration > 1 ? Math.round(pollRate * options.duration) : pollRate;
             const valueCurve = new Float32Array(length);
             const halfPi = Math.PI / 2;
             const squashFactor = halfPi / length;
@@ -174,12 +178,13 @@ export default function automation(
                 for (let index = 0; index < length; index++) {
                     // V_0 -> V_1 == V_1 - (V_1 - V_0) * cos( (t - T) * (π / 2T) + (π / 2) )
                     valueCurve[index] =
-                        value - difference * Math.cos((index - length) * squashFactor + halfPi);
+                        value - difference * Math.cos((index - length + 1) * squashFactor + halfPi);
                 }
             } else {
                 for (let index = 0; index < length; index++) {
                     // V_0 -> V_1 == V_0 + (V_1 - V_0) * cos( (t - T) * (π / 2T) )
-                    valueCurve[index] = currentValue + difference * Math.cos((index - length) * squashFactor);
+                    valueCurve[index] =
+                        currentValue + difference * Math.cos((index - length + 1) * squashFactor);
                 }
             }
             audioParam.setValueCurveAtTime(
@@ -187,6 +192,9 @@ export default function automation(
                 options.delay + audioContext.currentTime,
                 options.duration,
             );
+            const offset = options.delay + options.duration + audioContext.currentTime;
+            audioParam.cancelScheduledValues(offset);
+            audioParam.linearRampToValueAtTime(value, offset);
             break;
         }
         default: {
