@@ -1,4 +1,4 @@
-import automation, { AudioRampType } from './automation.js';
+import automation from './automation.js';
 import buildOptions, * as defaults from './defaults.js';
 
 /**
@@ -59,7 +59,13 @@ class HRTFPannerNode {
     private lastInterpolationTime: number = 0;
 
     /** The interpolation time, in milliseconds */
-    private interpolateTime: number = 1 / 32;
+    private interpolateTime: number = (1 / 24) * 1000;
+
+    /** Small delay for audio scheduling latency, in milliseconds */
+    private interpolateDelay: number = 1;
+
+    /** Holds the equal power interpolation ramp */
+    private interpolateRamp: Float32Array;
 
     /** The values that will be used for the next interpolation */
     private nextInterpolateMap: InterpolationMap;
@@ -100,10 +106,24 @@ class HRTFPannerNode {
 
         this.gainPrimaryNode = audioContext.createGain();
         this.gainSecondaryNode = audioContext.createGain();
+        this.gainSecondaryNode.gain.value = 0;
 
         this.lowpassFilter.connect(this.gainPrimaryNode);
         this.highpassFilter.connect(this.pannerNodeMain);
         this.pannerNodeMain.connect(this.gainPrimaryNode);
+
+        this.interpolateRamp = this.computeRamp();
+    }
+
+    private computeRamp(): Float32Array {
+        const length = Math.round(this.interpolateTime);
+        const halfPi = Math.PI / 2;
+        const squashFactor = halfPi / length;
+        const result = new Float32Array(length);
+        for (let index = 0; index < length; index++) {
+            result[index] = Math.cos((index - length + 1) * squashFactor);
+        }
+        return result;
     }
 
     connectSource(source: AudioNode) {
@@ -166,9 +186,10 @@ class HRTFPannerNode {
             return;
         }
 
-        const differenceMillis = (this.audioContext.currentTime - this.lastInterpolationTime) * 1000;
-
-        if (differenceMillis >= this.interpolateTime) {
+        if (
+            this.audioContext.currentTime >
+            this.lastInterpolationTime + (this.interpolateDelay + this.interpolateTime) / 1000
+        ) {
             this.lastInterpolationTime = this.audioContext.currentTime;
 
             for (const key in this.nextInterpolateMap) {
@@ -181,51 +202,67 @@ class HRTFPannerNode {
                 }
             }
 
+            const originalGain = this.gainPrimaryNode;
+            this.gainPrimaryNode = this.gainSecondaryNode;
+            this.gainSecondaryNode = originalGain;
+
             const originalPanner = this.pannerNodeMain;
-            this.gainSecondaryNode.gain.value = 1;
-            originalPanner.connect(this.gainSecondaryNode);
-            originalPanner.disconnect(this.gainPrimaryNode);
+            this.pannerNodeMain = this.pannerNodeInterpolate;
+            this.pannerNodeInterpolate = originalPanner;
+
+            this.lowpassFilter.connect(this.gainPrimaryNode);
+            this.highpassFilter.connect(this.pannerNodeMain);
+            this.pannerNodeMain.connect(this.gainPrimaryNode);
+
             automation(
                 this.audioContext,
                 this.gainSecondaryNode.gain,
                 0,
-                { ramp: AudioRampType.EQUAL_POWER, delay: 0, duration: this.interpolateTime / 1000 },
+                {
+                    ramp: this.interpolateRamp,
+                    delay: this.interpolateDelay / 1000,
+                    duration: this.interpolateTime / 1000,
+                },
                 true,
             );
 
-            this.gainPrimaryNode.gain.value = 0;
-            this.highpassFilter.connect(this.pannerNodeInterpolate); // begin spatializing with new panner
-            this.pannerNodeInterpolate.connect(this.gainPrimaryNode);
             automation(
                 this.audioContext,
                 this.gainPrimaryNode.gain,
                 1,
-                { ramp: AudioRampType.EQUAL_POWER_IN, delay: 0, duration: this.interpolateTime / 1000 },
+                {
+                    ramp: this.interpolateRamp,
+                    delay: this.interpolateDelay / 1000,
+                    duration: this.interpolateTime / 1000,
+                },
                 true,
             );
-
-            this.pannerNodeMain = this.pannerNodeInterpolate;
-            this.pannerNodeInterpolate = originalPanner;
 
             const self = this;
             const expectedInterpolationTime = this.lastInterpolationTime;
             setTimeout(() => {
                 if (self.lastInterpolationTime - expectedInterpolationTime < Number.EPSILON) {
+                    this.lowpassFilter.disconnect(originalGain);
                     this.highpassFilter.disconnect(originalPanner);
-                    originalPanner.disconnect(this.gainSecondaryNode);
+                    originalPanner.disconnect(originalGain);
                 }
-            }, this.interpolateTime);
+            }, this.interpolateDelay + this.interpolateTime);
 
             return;
         }
 
         const self = this;
         const expectedInterpolationTime = this.lastInterpolationTime;
-        setTimeout(() => {
-            if (self.lastInterpolationTime - expectedInterpolationTime < Number.EPSILON) {
-                self.scheduleInterpolation();
-            }
-        }, differenceMillis);
+        setTimeout(
+            () => {
+                if (self.lastInterpolationTime - expectedInterpolationTime < Number.EPSILON) {
+                    self.scheduleInterpolation();
+                }
+            },
+            1000 * (this.audioContext.currentTime - this.lastInterpolationTime) +
+                this.interpolateTime +
+                this.interpolateDelay,
+        );
     }
 
     public connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
