@@ -1,4 +1,5 @@
 import { AudioAdjustmentOptions } from './automation.js';
+import HRTFPannerNode from './HRTFPannerNode.js';
 declare class AudioSourceNodeEvent {
     #private;
     readonly type: string;
@@ -52,6 +53,7 @@ declare class AudioSourceNode {
     private sourceNode;
     private readonly gainNode;
     private readonly stereoPannerNode;
+    private hrtfPannerNode;
     private path;
     private _isDestroyed;
     private _isStarted;
@@ -95,7 +97,21 @@ declare class AudioSourceNode {
     load(path: string): Promise<void>;
     volume(volume: number, options?: AudioAdjustmentOptions): AudioSourceNode;
     pan(pan: number, options?: AudioAdjustmentOptions): AudioSourceNode;
-    pan3d(): AudioSourceNode;
+    /**
+     * Attach an {@link HRTFPannerNode} to spatialize this {@link AudioSourceNode}. This will disconnect all current
+     * outputs on this {@link AudioSourceNode} to prevent creating cycles. You must call `connect()` again in order to
+     * continue sending output to your destination.
+     *
+     * You should not use the `pan()` method in conjunction with the {@link HRTFPannerNode}.
+     *
+     * @param hrtfPannerNode {@link HRTFPannerNode} to attach
+     * @returns this {@link AudioSourceNode}
+     */
+    set hrtfPanner(hrtfPannerNode: HRTFPannerNode | null);
+    /**
+     * @returns the currently assigned {@link HRTFPannerNode} or `null` if none is set
+     */
+    get hrtfPanner(): HRTFPannerNode | null;
     /**
      * This method may be called multiple times during the lifetime of the AudioSourceNode.
      * To acheive this utility, the active sourceNode is "released" following a call to stop(),
@@ -209,10 +225,14 @@ declare class AudioSourceNode {
     get loop(): boolean;
     set loop(value: boolean);
     get loopStart(): number;
-    set loopStart(value: number);
+    set loopStart(seconds: number);
     get loopEnd(): number;
-    set loopEnd(value: number);
+    set loopEnd(seconds: number);
     get playbackRate(): AudioParam;
+    /**
+     * -1 if there is no set buffer
+     */
+    get sampleRate(): number;
     get context(): AudioContext;
     get channelCount(): number;
     get channelCountMode(): ChannelCountMode;

@@ -3,6 +3,7 @@ import { AudioAdjustmentOptions } from './automation.js';
 declare function buildOptions(trackSwapOptions: TrackSwapOptions | TrackSwapAdvancedOptions | undefined | null, defaultSwapOptions: TrackSwapAdvancedOptions): TrackSwapAdvancedOptions;
 declare function buildOptions(audioAdjustmentOptions: AudioAdjustmentOptions | undefined | null, defaultAudioAdjustmentOptions: Required<AudioAdjustmentOptions>): Required<AudioAdjustmentOptions>;
 declare function buildOptions(audioAdjustmentOptions: AudioAdjustmentOptions | undefined | null, defaultSwapOptions: TrackSwapAdvancedOptions): TrackSwapAdvancedOptions;
+declare function buildOptions(pannerOptions: PannerOptions | undefined | null, defaultPannerOptions: Required<PannerOptions>): Required<PannerOptions>;
 export default buildOptions;
 /**
  * Default behavior for an IN_OUT track audio swap
@@ -52,3 +53,7 @@ export declare const automationNatural: Required<AudioAdjustmentOptions>;
  * Default behavior for AudioParam automations
  */
 export declare const automationDefault: Required<AudioAdjustmentOptions>;
+/**
+ * Default PannerOptions
+ */
+export declare const pannerDefault: Required<PannerOptions>;

@@ -8,7 +8,7 @@ declare class MusicMixer {
     private readonly audioContext;
     private readonly gainNode;
     private tracks;
-    constructor();
+    constructor(options?: AudioContextOptions);
     /**
      * Create an audio source from this MusicMixer context.
      *
@@ -48,6 +48,7 @@ declare class MusicMixer {
      * @returns {MusicMixer} this MusicMixer
      */
     volume(volume: number, options?: AudioAdjustmentOptions): MusicMixer;
+    get context(): AudioContext;
     get currentTime(): number;
 }
 export default MusicMixer;
