@@ -196,6 +196,7 @@ class HRTFPannerNode {
             this.audioContext.currentTime >
             this.lastInterpolationTime + this.interpolateDelaySeconds + this.interpolateTimeSeconds
         ) {
+            // Set before and after computations
             this.lastInterpolationTime = this.audioContext.currentTime;
 
             for (const key in this.nextInterpolateMap) {
@@ -254,6 +255,8 @@ class HRTFPannerNode {
                 }
             }, this.interpolateDelay + this.interpolateTime);
 
+            // Set before and after computations
+            this.lastInterpolationTime = this.audioContext.currentTime;
             return;
         }
 
