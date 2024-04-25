@@ -61,8 +61,14 @@ class HRTFPannerNode {
     /** The interpolation time, in milliseconds */
     private interpolateTime: number = (1 / 24) * 1000;
 
+    /** interpolateTime in seconds */
+    private interpolateTimeSeconds = this.interpolateTime / 1000;
+
     /** Small delay for audio scheduling latency, in milliseconds */
     private interpolateDelay: number = 1;
+
+    /** interpolateDelay in seconds */
+    private interpolateDelaySeconds = this.interpolateDelay / 1000;
 
     /** Holds the equal power interpolation ramp */
     private interpolateRamp: Float32Array;
@@ -188,7 +194,7 @@ class HRTFPannerNode {
 
         if (
             this.audioContext.currentTime >
-            this.lastInterpolationTime + (this.interpolateDelay + this.interpolateTime) / 1000
+            this.lastInterpolationTime + this.interpolateDelaySeconds + this.interpolateTimeSeconds
         ) {
             this.lastInterpolationTime = this.audioContext.currentTime;
 
@@ -220,8 +226,8 @@ class HRTFPannerNode {
                 0,
                 {
                     ramp: this.interpolateRamp,
-                    delay: this.interpolateDelay / 1000,
-                    duration: this.interpolateTime / 1000,
+                    delay: this.interpolateDelaySeconds,
+                    duration: this.interpolateTimeSeconds,
                 },
                 true,
             );
@@ -232,8 +238,8 @@ class HRTFPannerNode {
                 1,
                 {
                     ramp: this.interpolateRamp,
-                    delay: this.interpolateDelay / 1000,
-                    duration: this.interpolateTime / 1000,
+                    delay: this.interpolateDelaySeconds,
+                    duration: this.interpolateTimeSeconds,
                 },
                 true,
             );
