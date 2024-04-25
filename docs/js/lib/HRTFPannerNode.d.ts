@@ -38,9 +38,14 @@ declare class HRTFPannerNode {
     private lastInterpolationTime;
     /** The interpolation time, in milliseconds */
     private interpolateTime;
+    /** Small delay for audio scheduling latency, in milliseconds */
+    private interpolateDelay;
+    /** Holds the equal power interpolation ramp */
+    private interpolateRamp;
     /** The values that will be used for the next interpolation */
     private nextInterpolateMap;
     constructor(audioContext: AudioContext, options?: PannerOptions);
+    private computeRamp;
     connectSource(source: AudioNode): void;
     disconnectSource(source: AudioNode): void;
     updatePosition(positionX: number, positionY: number, positionZ: number): void;

@@ -37,7 +37,7 @@ export type AudioAdjustmentOptions = {
      * 1 is the adjusted state. Going below 0 or above 1 does what you would expect, going beyond
      * the initial and adjusted state respectively.
      */
-    ramp: AudioRampType | number[] | null;
+    ramp: AudioRampType | number[] | Float32Array | null;
     /**
      * Delay of seconds before applying this adjustment.
      */
