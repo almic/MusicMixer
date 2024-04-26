@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <style>
+        body {
+            background: #000;
+            color: #f0f8ff;
+        }
+    </style>
+    <link rel="stylesheet" href="css/page.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
+
+    <!-- Main source -->
+    <script type="module" src="js/main.js"></script>
+    <script type="module" src="js/multitrack.js"></script>
+
+    <!-- Code highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/night-owl.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+
+</head>
+
+<body>
+
+    <div class="center page-box page-style flex-container">
+        <div class="flex-aside center-text">
+            <p><a href="index.html">Homepage</a></p>
+            <p class="flex-column-to-bottom"><a href="#">Scroll to top</a></p>
+        </div>
+        <div class="flex-main">
+            <h1 id="title" class="center-text text-glow-responsive">
+                Multitrack
+            </h1>
+            <p class="center-text text-glow">
+                Manipulate multiple track groups, control their volume, and master volume.
+            </p>
+            <p class="moz-only center-text">
+                <span class="pop">
+                Remember: For the best experience, use the latest version of Chrome. Firefox is 7 years late.
+                </span>
+            </p>
+            <hr>
+
+            <div class="flex-container flex-center flex-controls">
+                <button type="button" class="load-button glow-bright" onclick="hideButtons(this);loadMixer()">Click to load MusicMixer</button>
+                <div style="flex-basis:50%" class="height-initial" hidden>
+                    <div class="flex-container flex-column flex-center height-initial center-text">
+                        <span>Master Volume</span>
+                        <input type="range"
+                            min="0" max="1" value="0.5" step="0.001"
+                            oninput="changeVolume('all', Number(this.value))">
+                        <div class="flex-container flex-center flex-grow-children">
+                            <button type="button"
+                                style="margin-right:8px"
+                                onclick="playAll()"
+                                >Play All</button>
+                            <button type="button"
+                                style="margin-left:8px"
+                                onclick="stopAll()"
+                                >Stop All</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-break-row" hidden></div>
+
+                <!-- Music Track Group -->
+                <div class="flex-grow-equal height-initial" hidden>
+                    <div
+                        class="flex-container flex-center flex-column height-initial center-text"
+                    >
+                        <span>Music</span>
+                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="changeVolume('music',Number(this.value))">
+                        <button type="button"
+                            data-track="music"
+                            data-toggle-text="Stop"
+                            onclick="toggleTrack(this)"
+                            >Start</button>
+                        <button type="button"
+                            onclick="nextSong(this)"
+                            >Next Song</button>
+                    </div>
+                </div>
+
+                <!-- Ambience Track Group -->
+                <div class="flex-grow-equal height-initial" hidden>
+                    <div
+                        class="flex-container flex-center flex-column height-initial center-text"
+                    >
+                        <span>Environment</span>
+                        <input type="range"
+                            min="0" max="1" value="0.5" step="0.001"
+                            data-track="environment"
+                            oninput="changeVolume(this)"
+                        >
+                        <button type="button"
+                            data-track="environment.wind"
+                            data-toggle-text="Stop Wind"
+                            onclick="toggleTrack(this)"
+                            >Play Wind</button>
+                        <button type="button"
+                            data-track="environment.birds"
+                            data-toggle-text="Stop Birds"
+                            onclick="toggleTrack(this)"
+                            >Play Birds</button>
+                    </div>
+                </div>
+
+                <!-- Crowd Track Group -->
+                <div class="flex-grow-equal height-initial" hidden>
+                    <div
+                        class="flex-container flex-center flex-column height-initial center-text"
+                    >
+                        <span>Crowd</span>
+                        <input type="range"
+                            min="0" max="1" value="0.5" step="0.001"
+                            data-track="crowd"
+                            oninput="changeVolume(this)"
+                        >
+                        <button type="button"
+                            data-track="crowd.traffic"
+                            data-toggle-text="Stop Traffic"
+                            onclick="toggleTrack(this)"
+                            >Play Traffic</button>
+                        <button type="button"
+                            data-track="crowd.chatter"
+                            data-toggle-text="Stop Chatter"
+                            onclick="toggleTrack(this)"
+                            >Play Chatter</button>
+                    </div>
+                </div>
+
+                <!-- Effect Track Group -->
+                <div class="flex-grow-equal height-initial" hidden>
+                    <div
+                        class="flex-container flex-center flex-column height-initial center-text"
+                    >
+                        <span>Effects</span>
+                        <input type="range"
+                            min="0" max="1" value="0.5" step="0.001"
+                            data-track="effects"
+                            oninput="changeVolume(this)"
+                        >
+                        <button type="button"
+                            data-track="effects.writing"
+                            data-sound="writing"
+                            onclick="playSound(this)"
+                            >Take Notes</button>
+                        <button type="button"
+                            data-track="effects.gear"
+                            data-sound="equip"
+                            onclick="playSound(this)"
+                            >Equip Gear</button>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+            <div class="source-code-container">
+                <button type="button" class="collapse-button" data-collapse="code, Hide Source">Show Source</button>
+                <div name="code" class="collapse-content">
+                    <pre class="m-0"><code name="source-code" class="language-javascript">Source code!!</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+setTimeout(() => {
+    loadSourceCode('source-code', 'js/multitrack.js')
+        .catch((reason) => { console.error(reason); })
+        .finally(() => { hljs.highlightAll(); });
+}, 10);
+</script>
+
+</body>
+
+</html>

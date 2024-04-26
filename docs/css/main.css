@@ -380,6 +380,15 @@ div.flex-controls > button.load-button {
     padding-right: 24px;
 }
 
+div.flex-grow-equal {
+    flex-basis: 0;
+    flex-grow: 1;
+}
+
+div.flex-grow-children > * {
+    flex-grow: 1;
+}
+
 div.grid-box {
     display: grid;
     gap: 32px;
