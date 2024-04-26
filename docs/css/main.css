@@ -46,6 +46,10 @@ body {
         1 100%;
 }
 
+.height-initial {
+    height: initial !important;
+}
+
 p {
     font-size: 1rem;
     font-weight: 350;
@@ -115,6 +119,7 @@ button.select::after {
 
 input[type='range'] {
     height: 31px;
+    margin: 5px;
     appearance: none;
     -webkit-appearance: none;
     background-color: transparent;
@@ -330,11 +335,13 @@ div.flex-canvas-aside {
 
 div.flex-canvas {
     aspect-ratio: 1/1;
+    flex-basis: 69%;
     background-color: color-mix(in srgb, var(--theme-color), transparent 96%);
 }
 
 div.flex-canvas-aside {
     min-height: 100%;
+    flex-grow: 1;
     border-left: 1px solid color-mix(in srgb, var(--theme-color), transparent 75%);
     background: color-mix(in srgb, var(--theme-color), transparent 92%);
 }
