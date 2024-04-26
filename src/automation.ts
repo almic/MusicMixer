@@ -100,9 +100,6 @@ export default function automation(
             options.delay + audioContext.currentTime,
             options.duration,
         );
-        const offset = options.delay + options.duration + audioContext.currentTime;
-        audioParam.cancelScheduledValues(offset);
-        audioParam.linearRampToValueAtTime(value, offset);
         return;
     }
 
@@ -192,9 +189,6 @@ export default function automation(
                 options.delay + audioContext.currentTime,
                 options.duration,
             );
-            const offset = options.delay + options.duration + audioContext.currentTime;
-            audioParam.cancelScheduledValues(offset);
-            audioParam.linearRampToValueAtTime(value, offset);
             break;
         }
         default: {

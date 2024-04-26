@@ -61,7 +61,7 @@ class HRTFPannerNode {
     private lastInterpolationTime: number = 0;
 
     /** The interpolation time, in milliseconds */
-    private interpolateTime: number = (1 / 24) * 1000;
+    private interpolateTime: number = 30;
 
     /** interpolateTime in seconds */
     private interpolateTimeSeconds = this.interpolateTime / 1000;
