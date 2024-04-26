@@ -302,6 +302,9 @@ class HRTFPannerNode {
                 true,
             );
 
+            // Set before and after computations
+            this.lastInterpolationTime = this.audioContext.currentTime;
+
             const self = this;
             const expectedInterpolationTime = this.lastInterpolationTime;
             setTimeout(() => {
@@ -311,9 +314,6 @@ class HRTFPannerNode {
                     originalPanner.disconnect(originalGain);
                 }
             }, this.interpolateDelay + this.interpolateTime);
-
-            // Set before and after computations
-            this.lastInterpolationTime = this.audioContext.currentTime;
             return;
         }
 
