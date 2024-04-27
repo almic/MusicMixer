@@ -618,7 +618,10 @@ class AudioSourceNode {
         this._isDestroyed = true;
         // this.owner = null; // Deliberately retain the owner reference, so users can know what object should be responsible
         if (this.sourceNode) {
-            this.sourceNode.stop();
+            try {
+                this._isStopped = true;
+                this.sourceNode.stop();
+            } catch (ingored) {}
             this.sourceNode.disconnect();
             this.sourceNode.buffer = null;
             (this.sourceNode as any) = undefined;
