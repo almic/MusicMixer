@@ -52,7 +52,8 @@
                         <span>Master Volume</span>
                         <input type="range"
                             min="0" max="1" value="0.5" step="0.001"
-                            oninput="changeVolume('all', Number(this.value))">
+                            data-track="master"
+                            oninput="changeVolume(this)">
                         <div class="flex-container flex-center flex-grow-children">
                             <button type="button"
                                 style="margin-right:8px"
@@ -73,14 +74,18 @@
                         class="flex-container flex-center flex-column height-initial center-text"
                     >
                         <span>Music</span>
-                        <input type="range" min="0" max="1" value="0.5" step="0.001" oninput="changeVolume('music',Number(this.value))">
+                        <input type="range"
+                            min="0" max="1" value="0.25" step="0.001"
+                            data-track="music"
+                            oninput="changeVolume(this)"
+                        >
                         <button type="button"
                             data-track="music"
                             data-toggle-text="Stop"
                             onclick="toggleTrack(this)"
                             >Start</button>
                         <button type="button"
-                            onclick="nextSong(this)"
+                            onclick="nextSong(this.previousElementSibling)"
                             >Next Song</button>
                     </div>
                 </div>
