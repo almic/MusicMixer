@@ -87,6 +87,17 @@ class MusicMixer {
     }
 
     /**
+     * Retrieve a track group by its name.
+     *
+     * @param name track group name
+     * @returns {TrackGroup} if found, `undefined` otherwise
+     */
+    public trackGroup(name: string): TrackGroup | undefined {
+        const track = this.track(name);
+        return track instanceof TrackGroup ? track : undefined;
+    }
+
+    /**
      * Set the volume of this mixer, the "master volumen."
      * @param volume gain multiplier
      * @param options adjustment parameters
