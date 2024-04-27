@@ -42,6 +42,13 @@ declare class MusicMixer {
      */
     track(name: string): Track | undefined;
     /**
+     * Retrieve a track group by its name.
+     *
+     * @param name track group name
+     * @returns {TrackGroup} if found, `undefined` otherwise
+     */
+    trackGroup(name: string): TrackGroup | undefined;
+    /**
      * Set the volume of this mixer, the "master volumen."
      * @param volume gain multiplier
      * @param options adjustment parameters
