@@ -21,6 +21,32 @@ class MusicMixer {
     }
 
     /**
+     * Allows receiving the output of the entire Mixer, this is strictly intended to be used by
+     * AnalyserNode for visualization. Advanced users only!
+     *
+     * @param destination the {@link AudioNode} or {@link AudioParam} to which to connect
+     * @param outputIndex the output index to use, should be 0
+     * @param inputIndex the input index into the {@link AudioNode} or {@link AudioParam}
+     */
+    public connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
+    public connect(destination: AudioParam, outputIndex?: number): void;
+    public connect(
+        destination: AudioNode | AudioParam,
+        outputIndex?: number,
+        inputIndex?: number,
+    ): AudioNode | void {
+        if (destination instanceof AudioNode) {
+            return this.gainNode.connect(destination, outputIndex, inputIndex);
+        } else if (destination instanceof AudioParam) {
+            return this.gainNode.connect(destination, outputIndex);
+        } else {
+            console.warn(
+                `Cannot connect to type ${(destination as any)?.constructor?.name}. This is likely a mistake.`,
+            );
+        }
+    }
+
+    /**
      * Create an audio source from this MusicMixer context.
      *
      * @param path optional path to sound source

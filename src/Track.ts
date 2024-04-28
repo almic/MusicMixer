@@ -137,6 +137,17 @@ export type TrackSwapAdvancedOptions = {
  */
 interface Track {
     /**
+     * Allows receiving the final output of the Track. Advanced users only!
+     *
+     * @param destination the {@link AudioNode} or {@link AudioParam} to which to connect
+     * @param outputIndex the output index to use, should be 0
+     * @param inputIndex the input index into the {@link AudioNode} or {@link AudioParam}
+     */
+    connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
+    connect(destination: AudioParam, outputIndex?: number): void;
+    connect(destination: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): AudioNode | void;
+
+    /**
      * Begin playback on the track, starting the loaded AudioSource.
      *
      * Implementation Notes:
@@ -418,6 +429,24 @@ class TrackSingle implements Track {
 
     public toString(): string {
         return `TrackSingle[${this.name}] with context ${this.audioContext}`;
+    }
+
+    public connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
+    public connect(destination: AudioParam, outputIndex?: number): void;
+    public connect(
+        destination: AudioNode | AudioParam,
+        outputIndex?: number,
+        inputIndex?: number,
+    ): AudioNode | void {
+        if (destination instanceof AudioNode) {
+            return this.gainNode.connect(destination, outputIndex, inputIndex);
+        } else if (destination instanceof AudioParam) {
+            return this.gainNode.connect(destination, outputIndex);
+        } else {
+            console.warn(
+                `Cannot connect to type ${(destination as any)?.constructor?.name}. This is likely a mistake.`,
+            );
+        }
     }
 
     public start(): Track;
@@ -855,6 +884,24 @@ class TrackGroup implements Track {
 
     toString(): string {
         return `TrackGroup[${this.name}] with context ${this.audioContext}`;
+    }
+
+    public connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
+    public connect(destination: AudioParam, outputIndex?: number): void;
+    public connect(
+        destination: AudioNode | AudioParam,
+        outputIndex?: number,
+        inputIndex?: number,
+    ): AudioNode | void {
+        if (destination instanceof AudioNode) {
+            return this.gainNode.connect(destination, outputIndex, inputIndex);
+        } else if (destination instanceof AudioParam) {
+            return this.gainNode.connect(destination, outputIndex);
+        } else {
+            console.warn(
+                `Cannot connect to type ${(destination as any)?.constructor?.name}. This is likely a mistake.`,
+            );
+        }
     }
 
     /**
