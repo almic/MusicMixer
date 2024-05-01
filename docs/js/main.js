@@ -86,6 +86,23 @@ function hideButtons(button) {
     }
 }
 
+export function getThemeColors() {
+    const propertyValue = window.getComputedStyle(document.documentElement).getPropertyValue('--theme-color');
+    const colors = propertyValue.split(',').map((value) => {
+        value = value.trim();
+        let index = value.indexOf('(');
+        if (index != -1) {
+            value = value.slice(index + 1);
+        }
+        index = value.indexOf(')');
+        if (index != -1) {
+            value = value.slice(0, index);
+        }
+        return parseInt(value);
+    });
+    return colors;
+}
+
 //@ts-ignore
 window.collapse = collapse;
 //@ts-ignore

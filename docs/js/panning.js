@@ -5,9 +5,11 @@
 import { toggleText } from './main.js';
 import MusicMixer from './lib/MusicMixer.js';
 import HRTFPannerNode from './lib/HRTFPannerNode.js';
+import PanningGraphics from './panning_graphics.js';
 
 /* Web only; loading after interaction with page */
 let mixer;
+let panningGraphics;
 let track;
 let hrtfPanner;
 const position = {
@@ -24,8 +26,11 @@ function loadMixer() {
         .newTrack('noice', 'audio/2000_Shop3.ogg')
         .loop(true, 37_988, 37_988 + 1_227_391)
         .volume(0.5);
+    panningGraphics = new PanningGraphics(document.getElementById('panning'), mixer);
     hrtfPanner = new HRTFPannerNode(mixer.context);
-    hrtfPanner.updatePosition(...computePosition());
+    const position = computePosition();
+    panningGraphics.updatePosition(position);
+    hrtfPanner.updatePosition(...position);
     track.getLoadedSource().hrtfPanner = hrtfPanner;
 }
 
@@ -45,17 +50,23 @@ function computePosition() {
 function updateDistance(value) {
     value = -(value / (value - 1));
     position.distance = isFinite(value) ? value : 10000;
-    hrtfPanner.updatePosition(...computePosition());
+    const position = computePosition();
+    hrtfPanner.updatePosition(...position);
+    panningGraphics.updatePosition(position);
 }
 
 function updateAzimuth(value) {
     position.azimuth = value;
-    hrtfPanner.updatePosition(...computePosition());
+    const position = computePosition();
+    hrtfPanner.updatePosition(...position);
+    panningGraphics.updatePosition(position);
 }
 
 function updateElevation(value) {
     position.elevation = value;
-    hrtfPanner.updatePosition(...computePosition());
+    const position = computePosition();
+    hrtfPanner.updatePosition(...position);
+    panningGraphics.updatePosition(position);
 }
 
 function toggleTrack(self) {
