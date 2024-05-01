@@ -10,6 +10,16 @@ declare class MusicMixer {
     private tracks;
     constructor(options?: AudioContextOptions);
     /**
+     * Allows receiving the output of the entire Mixer, this is strictly intended to be used by
+     * AnalyserNode for visualization. Advanced users only!
+     *
+     * @param destination the {@link AudioNode} or {@link AudioParam} to which to connect
+     * @param outputIndex the output index to use, should be 0
+     * @param inputIndex the input index into the {@link AudioNode} or {@link AudioParam}
+     */
+    connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
+    connect(destination: AudioParam, outputIndex?: number): void;
+    /**
      * Create an audio source from this MusicMixer context.
      *
      * @param path optional path to sound source

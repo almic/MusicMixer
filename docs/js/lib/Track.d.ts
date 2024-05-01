@@ -118,6 +118,16 @@ export type TrackSwapAdvancedOptions = {
  */
 interface Track {
     /**
+     * Allows receiving the final output of the Track. Advanced users only!
+     *
+     * @param destination the {@link AudioNode} or {@link AudioParam} to which to connect
+     * @param outputIndex the output index to use, should be 0
+     * @param inputIndex the input index into the {@link AudioNode} or {@link AudioParam}
+     */
+    connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
+    connect(destination: AudioParam, outputIndex?: number): void;
+    connect(destination: AudioNode | AudioParam, outputIndex?: number, inputIndex?: number): AudioNode | void;
+    /**
      * Begin playback on the track, starting the loaded AudioSource.
      *
      * Implementation Notes:
@@ -354,6 +364,8 @@ declare class TrackSingle implements Track {
      */
     constructor(name: string, audioContext: AudioContext, destination: AudioNode, source?: AudioSourceNode);
     toString(): string;
+    connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
+    connect(destination: AudioParam, outputIndex?: number): void;
     start(): Track;
     start(options: AudioAdjustmentOptions): Track;
     start(delay: number, offset?: number, duration?: number): Track;
@@ -395,6 +407,8 @@ declare class TrackGroup implements Track {
     private readonly gainNode;
     constructor(name: string, audioContext: AudioContext, destination: AudioNode, source: AudioSourceNode);
     toString(): string;
+    connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
+    connect(destination: AudioParam, outputIndex?: number): void;
     /**
      * Retrieve a track by its name.
      *
