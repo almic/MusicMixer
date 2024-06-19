@@ -1,5 +1,17 @@
 {
-    "references": [{ "path": "./src/" }, { "path": "./test/" }, { "path": "./graphics/" }],
+    "references": [
+        {
+            "path": "./src/"
+        },
+        {
+            "path": "./test/"
+        }
+        /*
+        {
+            "path": "./graphics/"
+        }
+        */
+    ],
     "files": [],
     "compilerOptions": {
         "target": "ES2022",
