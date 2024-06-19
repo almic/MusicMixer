@@ -74,6 +74,8 @@ type Listener<E extends AudioSourceNodeEvent> = {
  * every time they are constructed. Because of this, we cannot use Audio() objects.
  */
 class AudioSourceNode {
+    private static TAG = '__musicmixer';
+
     private sourceNode: AudioBufferSourceNode;
     private readonly gainNode: GainNode;
     private readonly stereoPannerNode: StereoPannerNode;
@@ -157,21 +159,27 @@ class AudioSourceNode {
         }
 
         const bufferChannels = this.buffer.numberOfChannels;
-        const bufferLength = this.buffer.length;
-
-        const bufferClone = new AudioBuffer({
-            length: bufferLength,
-            sampleRate: this.buffer.sampleRate,
-            numberOfChannels: bufferChannels,
-        });
-
-        for (let i = 0; i < bufferChannels; i++) {
-            bufferClone.copyToChannel(this.buffer.getChannelData(i), i);
-        }
+        const bufferClone = AudioSourceNode.cloneBuffer(this.buffer);
 
         other.computeConnections(bufferChannels);
         other.bufferHalfLength = AudioSourceNode.computeBufferHalfLength(bufferClone);
         other.sourceNode.buffer = bufferClone;
+    }
+
+    private static cloneBuffer(buffer: AudioBuffer): AudioBuffer {
+        const bufferChannels = buffer.numberOfChannels;
+
+        const bufferClone = new AudioBuffer({
+            length: buffer.length,
+            sampleRate: buffer.sampleRate,
+            numberOfChannels: bufferChannels,
+        });
+
+        for (let i = 0; i < bufferChannels; i++) {
+            bufferClone.copyToChannel(buffer.getChannelData(i), i);
+        }
+
+        return bufferClone;
     }
 
     public connect(destination: AudioNode, outputIndex?: number, inputIndex?: number): AudioNode;
@@ -531,6 +539,10 @@ class AudioSourceNode {
             return null;
         }
 
+        if (AudioSourceNode.TAG in buffer) {
+            return buffer; // share the buffer
+        }
+
         const bufferLength = buffer.length;
         const bufferChannels = buffer.numberOfChannels;
         const trackedBuffer = new AudioBuffer({
@@ -538,6 +550,8 @@ class AudioSourceNode {
             sampleRate: buffer.sampleRate,
             numberOfChannels: bufferChannels + 1, // extra channel for tracking time
         });
+
+        (trackedBuffer as any)[AudioSourceNode.TAG] = true;
 
         for (let i = 0; i < bufferChannels; i++) {
             trackedBuffer.copyToChannel(buffer.getChannelData(i), i);

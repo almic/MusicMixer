@@ -1,3 +1,4 @@
+import { AudioSourceCache } from './AudioSourceCache.js';
 import AudioSourceNode from './AudioSourceNode.js';
 import TrackSingle, { Track, TrackGroup } from './Track.js';
 import automation, { AudioAdjustmentOptions } from './automation.js';
@@ -10,6 +11,7 @@ import * as defaults from './defaults.js';
 class MusicMixer {
     private readonly audioContext: AudioContext;
     private readonly gainNode: GainNode;
+    private cache: AudioSourceCache | null;
     private tracks: {
         [name: string]: Track;
     } = {};
@@ -18,6 +20,7 @@ class MusicMixer {
         this.audioContext = new AudioContext(options);
         this.gainNode = this.audioContext.createGain();
         this.gainNode.connect(this.audioContext.destination);
+        this.cache = null;
     }
 
     /**
@@ -44,6 +47,22 @@ class MusicMixer {
                 `Cannot connect to type ${(destination as any)?.constructor?.name}. This is likely a mistake.`,
             );
         }
+    }
+
+    /**
+     * Get the audio source cache for this MusicMixer. Highly recommended.
+     *
+     * Whenever you need to load audio, you should always use the cache.
+     * Be sure you understand how it works! The cache will keep all loaded
+     * audio forever, until you deliberately ask it to release resources.
+     *
+     * @returns an {@link AudioSourceCache}
+     */
+    public getAudioCache(): AudioSourceCache {
+        if (!this.cache) {
+            this.cache = new AudioSourceCache(this.audioContext);
+        }
+        return this.cache;
     }
 
     /**

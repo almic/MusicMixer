@@ -1,5 +1,6 @@
 {
     "files": [
+        "AudioSourceCache.ts",
         "AudioSourceNode.ts",
         "HRTFPannerNode.ts",
         "MusicMixer.ts",
