@@ -3,7 +3,7 @@
         "AudioSourceCache.ts",
         "AudioSourceNode.ts",
         "HRTFPannerNode.ts",
-        "MusicMixer.ts",
+        "Mixer.ts",
         "Track.ts",
         "automation.ts",
         "defaults.ts"
@@ -18,12 +18,8 @@
         "checkJs": true,
         "maxNodeModuleJsDepth": 0,
 
-        "declaration": true,
-        "inlineSourceMap": true,
-        "outDir": "../dist",
-        "removeComments": false,
+        "noEmit": true,
 
-        "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
 
         "strict": true,

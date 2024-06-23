@@ -2,17 +2,15 @@
     "name": "musicmixer",
     "version": "0.1.0",
     "description": "library for mixing sounds and music with the Web Audio API",
-    "main": "dist/main.js",
+    "main": "dist/musicmixer.min.js",
+    "types": "musicmixer.d.ts",
     "engines": {
-        "node": "21.1.0"
+        "node": "22.0.0"
     },
     "scripts": {
-        "build": "npm run format && tsc -b && npm run copyDistToDocs && npm run copyGraphicsBuild",
-        "bundle": "npm run build && node scripts/bundle.js",
+        "build": "dts-bundle-generator --config dts-bundle-config.js && node scripts/bundle.js",
         "start": "onchange --await-write-finish 1500 \"src/**/*.ts\" \"src/**/*.js\" -- npm run build",
         "format": "prettier src/**/*.ts src/**/*.js graphics/**/*.ts graphics/**/*.js test/**/*.ts test/**/*.js --write --no-error-on-unmatched-pattern",
-        "copyDistToDocs": "xcopy .\\dist\\*.js .\\docs\\js\\lib /e /y /v /i /f && xcopy .\\dist\\*.d.ts .\\docs\\js\\lib /e /y /v /i /f",
-        "copyGraphicsBuild": "xcopy .\\graphics\\build\\*.js .\\docs\\js\\lib\\graphics /e /y /v /i /f && xcopy .\\graphics\\shaders\\*.wgsl .\\docs\\js\\lib\\graphics\\shaders /e /y /v /i /f",
         "test": "node test/build/index.js"
     },
     "repository": {
@@ -23,7 +21,9 @@
         "music",
         "mixing"
     ],
-    "author": "almic",
+    "authors": [
+        "almic"
+    ],
     "license": "MIT",
     "bugs": {
         "url": "https://github.com/almic/MusicMixer/issues"
@@ -34,6 +34,7 @@
         "@types/nw.js": "^0.13.21",
         "@types/semver": "6.2.0",
         "@webgpu/types": "^0.1.40",
+        "dts-bundle-generator": "^9.5.1",
         "esbuild": "^0.21.5",
         "onchange": "^7.1.0",
         "prettier": "^3.2.5",

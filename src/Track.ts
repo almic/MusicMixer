@@ -873,7 +873,7 @@ class TrackGroup implements Track {
         private readonly name: string,
         private readonly audioContext: AudioContext,
         destination: AudioNode,
-        source: AudioSourceNode,
+        source?: AudioSourceNode,
     ) {
         this.gainNode = audioContext.createGain();
         this.gainNode.connect(destination);

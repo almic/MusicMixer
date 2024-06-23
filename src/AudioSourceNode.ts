@@ -2,7 +2,7 @@ import automation, { AudioAdjustmentOptions } from './automation.js';
 import buildOptions, * as defaults from './defaults.js';
 import HRTFPannerNode from './HRTFPannerNode.js';
 
-class AudioSourceNodeEvent {
+export class AudioSourceNodeEvent {
     #propagationStopped = false;
 
     protected constructor(
@@ -20,13 +20,13 @@ class AudioSourceNodeEvent {
     }
 }
 
-class EventEnded extends AudioSourceNodeEvent {
+export class EventEnded extends AudioSourceNodeEvent {
     constructor(target: AudioSourceNode, time: number) {
         super('ended', target, time);
     }
 }
 
-class EventLoaded extends AudioSourceNodeEvent {
+export class EventLoaded extends AudioSourceNodeEvent {
     constructor(
         target: AudioSourceNode,
         time: number,

@@ -35,6 +35,9 @@
         "allowUnusedLabels": false,
         "allowUnreachableCode": false,
 
-        "skipLibCheck": true
+        "skipLibCheck": true,
+
+        "typeRoots": ["node_modules", "node_modules/@types"],
+        "types": ["undici-types", "node"]
     }
 }
