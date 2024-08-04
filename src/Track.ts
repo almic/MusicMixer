@@ -157,16 +157,19 @@ interface Track {
      *   and call `swap()`, merging the passed options with the default swap options as above.
      * - Using `duration` is equivalent to calling `stop(delay + duration)` after this method returns.
      * @param delay optional delay time
-     * @param options adjustment parameters for fading in the source
+     * @param options adjustment parameters for fading in the source, or swapping when already playing
      * @param offset offset into the audio source to start playback from, with the same effects as
      *               offset from the [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start#offset)
      * @param duration how long to play before stopping
      * @returns {Track} this Track
      */
     start(): Track;
-    start(options: AudioAdjustmentOptions): Track;
     start(delay: number, offset?: number, duration?: number): Track;
-    start(offset: number, duration: number, options: AudioAdjustmentOptions): Track;
+    start(
+        options: AudioAdjustmentOptions | TrackSwapAdvancedOptions,
+        offset?: number,
+        duration?: number,
+    ): Track;
 
     /**
      * Stop playback on the track, pausing the currently playing AudioSource.
@@ -190,21 +193,20 @@ interface Track {
      * Implementation Notes:
      * - This is equivalent to calling `loadSource(path)`, then `play(...)`
      * @param path audio source path
-     * @param options adjustment parameters for fading in the source
      * @param delay delay time
+     * @param options adjustment parameters for fading in the source
      * @param offset offset into the audio source to start playback from, with the same effects as
      *               offset from the [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start#offset)
      * @param duration how long to play before stopping
      * @returns {AudioSourceNode} the new AudioSource
      */
     playSource(path: string): AudioSourceNode;
-    playSource(path: string, options: AudioAdjustmentOptions): AudioSourceNode;
     playSource(path: string, delay: number, offset?: number, duration?: number): AudioSourceNode;
     playSource(
         path: string,
-        offset: number,
-        duration: number,
-        options: AudioAdjustmentOptions,
+        options: AudioAdjustmentOptions | TrackSwapAdvancedOptions,
+        offset?: number,
+        duration?: number,
     ): AudioSourceNode;
 
     /**
@@ -240,16 +242,15 @@ interface Track {
      *   call start() with the appropriate options
      * - Using `duration` is equivalent to calling `stop(delay + duration)` after this method returns.
      * @param delay delay time
+     * @param options swap parameters
      * @param offset offset into the audio source to start playback from, with the same effects as
      *               offset from the [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start#offset)
      * @param duration how long to play before stopping
-     * @param options swap parameters
      * @returns {Track} this Track
      */
     swap(): Track;
     swap(delay: number, offset?: number, duration?: number): Track;
-    swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
-    swap(offset: number, duration: number, options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
+    swap(options: TrackSwapOptions | TrackSwapAdvancedOptions, offset?: number, duration?: number): Track;
 
     /**
      * Set the volume of this track.
@@ -449,31 +450,24 @@ class TrackSingle implements Track {
         }
     }
 
-    public start(): Track;
-    public start(options: AudioAdjustmentOptions): Track;
-    public start(delay: number, offset?: number, duration?: number): Track;
-    public start(offset: number, duration: number, options: AudioAdjustmentOptions): Track;
+    start(): Track;
+    start(delay: number, offset?: number, duration?: number): Track;
     start(
-        optionsOrDelayOrOffset?: number | AudioAdjustmentOptions,
-        offsetOrDuration?: number,
-        optionsOrDuration?: number | AudioAdjustmentOptions,
+        options: AudioAdjustmentOptions | TrackSwapAdvancedOptions,
+        offset?: number,
+        duration?: number,
+    ): Track;
+    start(
+        delayOrOptions?: number | AudioAdjustmentOptions | TrackSwapAdvancedOptions,
+        offset?: number,
+        duration?: number,
     ): Track {
-        let options: AudioAdjustmentOptions | undefined;
         let delay: number | undefined;
-        let offset: number | undefined;
-        let duration: number | undefined;
-        if (typeof optionsOrDelayOrOffset == 'number') {
-            if (optionsOrDuration == undefined || typeof optionsOrDuration == 'number') {
-                delay = optionsOrDelayOrOffset;
-                offset = offsetOrDuration;
-                duration = optionsOrDuration;
-            } else {
-                offset = optionsOrDelayOrOffset;
-                duration = offsetOrDuration;
-                options = optionsOrDuration;
-            }
+        let options: AudioAdjustmentOptions | TrackSwapAdvancedOptions | undefined;
+        if (typeof delayOrOptions == 'number') {
+            delay = delayOrOptions;
         } else {
-            options = optionsOrDelayOrOffset;
+            options = delayOrOptions;
         }
 
         this.lastStartCallTime = this.audioContext.currentTime;
@@ -492,14 +486,10 @@ class TrackSingle implements Track {
             }
 
             const swapOptions = buildOptions(options, defaults.trackSwapOutIn);
-            if (offset != undefined && duration != undefined) {
-                return this.swap(offset, duration, swapOptions);
-            }
-
-            return this.swap(swapOptions);
+            return this.swap(swapOptions, offset, duration);
         }
 
-        const startOptions = buildOptions(options, defaults.startImmediate);
+        const startOptions = buildOptions(options as AudioAdjustmentOptions, defaults.startImmediate);
         if (delay != undefined) {
             startOptions.delay += delay;
         }
@@ -621,52 +611,24 @@ class TrackSingle implements Track {
         return this;
     }
 
-    public playSource(path: string): AudioSourceNode;
-    public playSource(path: string, options: AudioAdjustmentOptions): AudioSourceNode;
-    public playSource(path: string, delay: number, offset?: number, duration?: number): AudioSourceNode;
-    public playSource(
+    playSource(path: string): AudioSourceNode;
+    playSource(path: string, delay: number, offset?: number, duration?: number): AudioSourceNode;
+    playSource(
         path: string,
-        offset: number,
-        duration: number,
-        options: AudioAdjustmentOptions,
+        options: AudioAdjustmentOptions | TrackSwapAdvancedOptions,
+        offset?: number,
+        duration?: number,
     ): AudioSourceNode;
     playSource(
         path: string,
-        optionsOrDelayOrOffset?: AudioAdjustmentOptions | number,
-        offsetOrDuration?: number,
-        optionsOrDuration?: number | AudioAdjustmentOptions,
+        delayOrOptions?: AudioAdjustmentOptions | TrackSwapAdvancedOptions | number,
+        offset?: number,
+        duration?: number,
     ): AudioSourceNode {
-        let options: AudioAdjustmentOptions | undefined;
-        let delay: number | undefined;
-        let offset: number | undefined;
-        let duration: number | undefined;
-
-        if (typeof optionsOrDelayOrOffset == 'number') {
-            if (optionsOrDuration == undefined || typeof optionsOrDuration == 'number') {
-                delay = optionsOrDelayOrOffset;
-                offset = offsetOrDuration;
-                duration = optionsOrDuration;
-            } else {
-                offset = optionsOrDelayOrOffset;
-                duration = offsetOrDuration;
-                options = optionsOrDuration;
-            }
-        } else {
-            options = optionsOrDelayOrOffset;
-        }
-
         const audioSource = this.loadSource(path);
-        if (delay) {
-            this.start(delay, offset, duration);
-        } else if (options) {
-            if (offset != undefined && duration != undefined) {
-                this.start(offset, duration, options);
-            } else {
-                this.start(options);
-            }
-        } else {
-            this.start();
-        }
+
+        // @ts-expect-error This is just a pass-through to start()
+        this.start(delayOrOptions, offset, duration);
 
         return audioSource;
     }
@@ -695,18 +657,13 @@ class TrackSingle implements Track {
         return this.loadedSource ?? null;
     }
 
-    public swap(): Track;
-    public swap(delay: number, offset?: number, duration?: number): Track;
-    public swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
-    public swap(
-        offset: number,
-        duration: number,
-        options: TrackSwapOptions | TrackSwapAdvancedOptions,
-    ): Track;
+    swap(): Track;
+    swap(delay: number, offset?: number, duration?: number): Track;
+    swap(options: TrackSwapOptions | TrackSwapAdvancedOptions, offset?: number, duration?: number): Track;
     swap(
-        optionsOrDelayOrOffset?: TrackSwapOptions | TrackSwapAdvancedOptions | number,
-        offsetOrDuration?: number,
-        optionsOrDuration?: number | TrackSwapOptions | TrackSwapAdvancedOptions,
+        delayOrOptions?: TrackSwapOptions | TrackSwapAdvancedOptions | number,
+        offset?: number,
+        duration?: number,
     ): Track {
         if (!this.isLoadSourceCalled) {
             return this;
@@ -725,20 +682,10 @@ class TrackSingle implements Track {
 
         let options: TrackSwapOptions | TrackSwapAdvancedOptions | undefined;
         let delay: number | undefined;
-        let offset: number | undefined;
-        let duration: number | undefined;
-        if (typeof optionsOrDelayOrOffset == 'number') {
-            if (optionsOrDuration == undefined || typeof optionsOrDuration == 'number') {
-                delay = optionsOrDelayOrOffset;
-                offset = offsetOrDuration;
-                duration = optionsOrDuration;
-            } else {
-                offset = optionsOrDelayOrOffset;
-                duration = offsetOrDuration;
-                options = optionsOrDuration;
-            }
+        if (typeof delayOrOptions == 'number') {
+            delay = delayOrOptions;
         } else {
-            options = optionsOrDelayOrOffset;
+            options = delayOrOptions;
         }
 
         const swapOptions = buildOptions(options, defaults.trackSwapDefault);
@@ -761,11 +708,7 @@ class TrackSingle implements Track {
             }
         }
 
-        if (offset != undefined && duration != undefined) {
-            return this.start(offset, duration, swapOptions.newSource);
-        }
-
-        return this.start(swapOptions.newSource);
+        return this.start(swapOptions.newSource, offset, duration);
     }
 
     public volume(volume: number, options?: AudioAdjustmentOptions): Track {
@@ -946,11 +889,8 @@ class TrackGroup implements Track {
 
         const track = new TrackSingle(name, this.audioContext, this.gainNode);
         if (pathOrSource != undefined) {
-            if (typeof pathOrSource == 'string') {
-                track.loadSource(pathOrSource);
-            } else {
-                track.loadSource(pathOrSource);
-            }
+            // @ts-expect-error This is just a pass-through to the single track loadSource()
+            track.loadSource(pathOrSource);
         }
 
         this.tracks[name] = track;
@@ -960,51 +900,21 @@ class TrackGroup implements Track {
     /**
      * Starts playback of all tracks in this group.
      */
-    public start(): Track;
-    public start(options: AudioAdjustmentOptions): Track;
-    public start(delay: number, offset?: number, duration?: number): Track;
-    public start(offset: number, duration: number, options: AudioAdjustmentOptions): Track;
+    start(): Track;
+    start(delay: number, offset?: number, duration?: number): Track;
     start(
-        optionsOrDelayOrOffset?: number | AudioAdjustmentOptions,
-        offsetOrDuration?: number,
-        optionsOrDuration?: number | AudioAdjustmentOptions,
+        options: AudioAdjustmentOptions | TrackSwapAdvancedOptions,
+        offset?: number,
+        duration?: number,
+    ): Track;
+    start(
+        delayOrOptions?: number | AudioAdjustmentOptions | TrackSwapAdvancedOptions,
+        offset?: number,
+        duration?: number,
     ): Track {
-        let options: AudioAdjustmentOptions | undefined;
-        let delay: number | undefined;
-        let offset: number | undefined;
-        let duration: number | undefined;
-        if (typeof optionsOrDelayOrOffset == 'number') {
-            if (optionsOrDuration == undefined || typeof optionsOrDuration == 'number') {
-                delay = optionsOrDelayOrOffset;
-                offset = offsetOrDuration;
-                duration = optionsOrDuration;
-            } else {
-                offset = optionsOrDelayOrOffset;
-                duration = offsetOrDuration;
-                options = optionsOrDuration;
-            }
-        } else {
-            options = optionsOrDelayOrOffset;
-        }
-
-        if (delay) {
-            for (const track in this.tracks) {
-                this.tracks[track]?.start(delay, offset, duration);
-            }
-        } else if (options) {
-            if (offset != undefined && duration != undefined) {
-                for (const track in this.tracks) {
-                    this.tracks[track]?.start(offset, duration, options);
-                }
-            } else {
-                for (const track in this.tracks) {
-                    this.tracks[track]?.start(options);
-                }
-            }
-        } else {
-            for (const track in this.tracks) {
-                this.tracks[track]?.start();
-            }
+        for (const track in this.tracks) {
+            // @ts-expect-error This is just a pass-through to the single track start()
+            this.tracks[track]?.start(delayOrOptions, offset, duration);
         }
 
         return this;
@@ -1017,86 +927,37 @@ class TrackGroup implements Track {
     public stop(delay: number): Track;
     public stop(options: AudioAdjustmentOptions): Track;
     stop(delayOrOptions?: number | AudioAdjustmentOptions): Track {
-        let delay: number | undefined;
-        let options: AudioAdjustmentOptions | undefined;
-        if (typeof delayOrOptions == 'number') {
-            delay = delayOrOptions;
-        } else {
-            options = delayOrOptions;
-        }
-
-        if (delay) {
-            for (const track in this.tracks) {
-                this.tracks[track]?.stop(delay);
-            }
-        } else if (options) {
-            for (const track in this.tracks) {
-                this.tracks[track]?.stop(options);
-            }
-        } else {
-            for (const track in this.tracks) {
-                this.tracks[track]?.stop();
-            }
+        for (const track in this.tracks) {
+            // @ts-expect-error This is just a pass-through to the single track stop()
+            this.tracks[track]?.stop(delayOrOptions);
         }
 
         return this;
     }
 
-    public playSource(path: string): AudioSourceNode;
-    public playSource(path: string, options: AudioAdjustmentOptions): AudioSourceNode;
-    public playSource(path: string, delay: number, offset?: number, duration?: number): AudioSourceNode;
-    public playSource(
+    playSource(path: string): AudioSourceNode;
+    playSource(path: string, delay: number, offset?: number, duration?: number): AudioSourceNode;
+    playSource(
         path: string,
-        offset: number,
-        duration: number,
-        options: AudioAdjustmentOptions,
+        options: AudioAdjustmentOptions | TrackSwapAdvancedOptions,
+        offset?: number,
+        duration?: number,
     ): AudioSourceNode;
     playSource(
         path: string,
-        optionsOrDelayOrOffset?: AudioAdjustmentOptions | number,
-        offsetOrDuration?: number,
-        optionsOrDuration?: number | AudioAdjustmentOptions,
+        delayOrOptions?: AudioAdjustmentOptions | TrackSwapAdvancedOptions | number,
+        offset?: number,
+        duration?: number,
     ): AudioSourceNode {
-        let options: AudioAdjustmentOptions | undefined;
-        let delay: number | undefined;
-        let offset: number | undefined;
-        let duration: number | undefined;
-
-        if (typeof optionsOrDelayOrOffset == 'number') {
-            if (optionsOrDuration == undefined || typeof optionsOrDuration == 'number') {
-                delay = optionsOrDelayOrOffset;
-                offset = offsetOrDuration;
-                duration = optionsOrDuration;
-            } else {
-                offset = optionsOrDelayOrOffset;
-                duration = offsetOrDuration;
-                options = optionsOrDuration;
-            }
-        } else {
-            options = optionsOrDelayOrOffset;
-        }
-
-        if (delay) {
-            return this.primaryTrack().playSource(path, delay, offset, duration);
-        } else if (options) {
-            if (offset != undefined && duration != undefined) {
-                return this.primaryTrack().playSource(path, offset, duration, options);
-            } else {
-                return this.primaryTrack().playSource(path, options);
-            }
-        } else {
-            return this.primaryTrack().playSource(path);
-        }
+        // @ts-expect-error This is just a pass-through to the single track playSource()
+        return this.primaryTrack().playSource(path, delayOrOptions, offset, duration);
     }
 
     public loadSource(path: string): AudioSourceNode;
     public loadSource(source: AudioSourceNode): AudioSourceNode;
     public loadSource(pathOrSource: string | AudioSourceNode): AudioSourceNode {
-        if (typeof pathOrSource == 'string') {
-            return this.primaryTrack().loadSource(pathOrSource);
-        } else {
-            return this.primaryTrack().loadSource(pathOrSource);
-        }
+        // @ts-expect-error This is just a pass-through to the single track loadSource()
+        return this.primaryTrack().loadSource(pathOrSource);
     }
 
     public getActiveSource(): AudioSourceNode | null {
@@ -1107,48 +968,16 @@ class TrackGroup implements Track {
         return this.primaryTrack().getLoadedSource();
     }
 
-    public swap(): Track;
-    public swap(delay: number, offset?: number, duration?: number): Track;
-    public swap(options: TrackSwapOptions | TrackSwapAdvancedOptions): Track;
-    public swap(
-        offset: number,
-        duration: number,
-        options: TrackSwapOptions | TrackSwapAdvancedOptions,
-    ): Track;
+    swap(): Track;
+    swap(delay: number, offset?: number, duration?: number): Track;
+    swap(options: TrackSwapOptions | TrackSwapAdvancedOptions, offset?: number, duration?: number): Track;
     swap(
-        optionsOrDelayOrOffset?: TrackSwapOptions | TrackSwapAdvancedOptions | number,
-        offsetOrDuration?: number,
-        optionsOrDuration?: number | TrackSwapOptions | TrackSwapAdvancedOptions,
+        delayOrOptions?: TrackSwapOptions | TrackSwapAdvancedOptions | number,
+        offset?: number,
+        duration?: number,
     ): Track {
-        let options: TrackSwapOptions | TrackSwapAdvancedOptions | undefined;
-        let delay: number | undefined;
-        let offset: number | undefined;
-        let duration: number | undefined;
-        if (typeof optionsOrDelayOrOffset == 'number') {
-            if (optionsOrDuration == undefined || typeof optionsOrDuration == 'number') {
-                delay = optionsOrDelayOrOffset;
-                offset = offsetOrDuration;
-                duration = optionsOrDuration;
-            } else {
-                offset = optionsOrDelayOrOffset;
-                duration = offsetOrDuration;
-                options = optionsOrDuration;
-            }
-        } else {
-            options = optionsOrDelayOrOffset;
-        }
-
-        if (delay) {
-            return this.primaryTrack().swap(delay, offset, duration);
-        } else if (options) {
-            if (offset != undefined && duration != undefined) {
-                return this.primaryTrack().swap(offset, duration, options);
-            } else {
-                return this.primaryTrack().swap(options);
-            }
-        } else {
-            return this.primaryTrack().swap();
-        }
+        // @ts-expect-error This is just a pass-through to the single track swap()
+        return this.primaryTrack().swap(delayOrOptions, offset, duration);
     }
 
     /**

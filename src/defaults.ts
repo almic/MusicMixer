@@ -2,17 +2,13 @@ import { TrackSwapOptions, TrackSwapAdvancedOptions, TrackSwapType } from './Tra
 import { AudioAdjustmentOptions, AudioRampType } from './automation.js';
 
 function buildOptions(
-    trackSwapOptions: TrackSwapOptions | TrackSwapAdvancedOptions | undefined | null,
+    trackSwapOptions: AudioAdjustmentOptions | TrackSwapOptions | TrackSwapAdvancedOptions | undefined | null,
     defaultSwapOptions: TrackSwapAdvancedOptions,
 ): TrackSwapAdvancedOptions;
 function buildOptions(
     audioAdjustmentOptions: AudioAdjustmentOptions | undefined | null,
     defaultAudioAdjustmentOptions: Required<AudioAdjustmentOptions>,
 ): Required<AudioAdjustmentOptions>;
-function buildOptions(
-    audioAdjustmentOptions: AudioAdjustmentOptions | undefined | null,
-    defaultSwapOptions: TrackSwapAdvancedOptions,
-): TrackSwapAdvancedOptions;
 function buildOptions(
     pannerOptions: PannerOptions | undefined | null,
     defaultPannerOptions: Required<PannerOptions>,
